@@ -10,4 +10,5 @@ abstract class FlutterFlexPlayerAbstract {
   void setPlaybackSpeed(double speed);
   void setLooping(bool looping);
   void setMute(bool mute);
+  void dispose();
 }

@@ -20,6 +20,11 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
 
   late VideoPlayerController _videoPlayerController;
 
+  VideoPlayerController? get videoPlayerController =>
+      _videoPlayerController.value.isInitialized
+          ? _videoPlayerController
+          : null;
+
   /// Returns whether the video player is initialized.
   bool get isInitialized => _videoPlayerController.value.isInitialized;
 
@@ -215,5 +220,14 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   @override
   void stop() {
     // TODO: implement stop
+  }
+
+  @override
+  void dispose() {
+    _videoPlayerController.dispose();
+    _initializationstream.close();
+    _positionstream.close();
+    _durationstream.close();
+    _playerstatestream.close();
   }
 }

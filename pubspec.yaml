@@ -9,7 +9,7 @@ environment:
 
 dependencies:
   audio_video_progress_bar: ^2.0.3
-  video_player: null
+  video_player: 
   flutter:
     sdk: flutter
 
