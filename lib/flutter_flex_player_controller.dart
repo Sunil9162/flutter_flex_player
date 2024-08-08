@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_flex_player/helpers/flex_player_sources.dart';
 import 'package:video_player/video_player.dart';
 
 import 'flutter_flex_player_abstract.dart';
+import 'helpers/configuration.dart';
 import 'helpers/enums.dart';
 import 'pages/full_screen_page.dart';
 
@@ -280,31 +282,64 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   }
 
   bool _isFullScreen = false;
-
   bool get isFullScreen => _isFullScreen;
+
+  FlexPlayerConfiguration get configuration => FlexPlayerConfiguration();
 
   @override
   void enterFullScreen(BuildContext context) async {
     _isFullScreen = true;
-    await Navigator.push(
-      context,
-      PageRouteBuilder<dynamic>(
-        fullscreenDialog: true,
-        pageBuilder: (BuildContext context, _, __) => const FullScreenView(),
-        reverseTransitionDuration: const Duration(milliseconds: 400),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-            FadeTransition(
-          opacity: animation,
-          child: child,
-        ),
-      ),
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeRight,
+      DeviceOrientation.landscapeLeft,
+    ]);
+    await SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.immersiveSticky,
+      overlays: [],
     );
-    _isFullScreen = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Navigator.push(
+        context,
+        PageRouteBuilder<dynamic>(
+          pageBuilder: (BuildContext context, _, __) => FullScreenView(
+            controller: this,
+            configuration: configuration,
+          ),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeInOut,
+                  ),
+                ),
+                child: child,
+              ),
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 300),
+        ),
+      );
+      _isFullScreen = false;
+    });
   }
 
   @override
-  void exitFullScreen(BuildContext context) {
+  void exitFullScreen(BuildContext context) async {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    await SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: SystemUiOverlay.values,
+    );
     _isFullScreen = false;
-    Navigator.of(context).pop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Navigator.pop(context);
+    });
   }
 }

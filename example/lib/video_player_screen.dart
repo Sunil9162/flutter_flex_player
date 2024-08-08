@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_flex_player/flutter_flex_player.dart';
 import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
+import 'package:flutter_flex_player/helpers/configuration.dart';
 import 'package:flutter_flex_player/helpers/flex_player_sources.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
@@ -36,7 +37,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       ),
       body: FlutterFlexPlayer(
         _controller,
-        aspectRatio: 16 / 9,
+        configuration: FlexPlayerConfiguration(),
       ),
     );
   }

@@ -1,30 +1,22 @@
 library flutter_flex_player;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
-import 'package:video_player/video_player.dart';
+import 'package:flutter_flex_player/helpers/configuration.dart';
+import 'package:flutter_flex_player/pages/full_screen_page.dart';
 
-import 'controls/player_controls.dart';
 import 'helpers/enums.dart';
 
 // FlutterFlexPlayer is a class that will be used to create a FlutterFlexPlayer widget.
 class FlutterFlexPlayer extends StatefulWidget {
   final FlutterFlexPlayerController controller;
-  final bool isFullScreen;
-  final bool controlsVisible;
-  final Orientation orientationonFullScreen;
-  final String? thumbnail;
-  final double aspectRatio;
-  final bool autoDispose;
+  final FlexPlayerConfiguration configuration;
   const FlutterFlexPlayer(
     this.controller, {
     super.key,
-    this.isFullScreen = false,
-    this.controlsVisible = true,
-    this.orientationonFullScreen = Orientation.landscape,
-    this.thumbnail,
-    this.aspectRatio = 16 / 9,
-    this.autoDispose = true,
+    required this.configuration,
   });
 
   @override
@@ -34,13 +26,14 @@ class FlutterFlexPlayer extends StatefulWidget {
 class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
   late FlutterFlexPlayerController _controller;
   InitializationEvent? _initializationEvent;
+  late StreamSubscription<InitializationEvent> _initializationSubscription;
 
   @override
   void initState() {
     super.initState();
     _controller = widget.controller;
-    _controller.aspectRatio = widget.aspectRatio;
-    _controller.onInitialized.listen((event) {
+    _controller.aspectRatio = widget.configuration.aspectRatio;
+    _initializationSubscription = _controller.onInitialized.listen((event) {
       setState(() {
         _initializationEvent = event;
       });
@@ -49,16 +42,17 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
 
   @override
   void dispose() {
-    if (widget.autoDispose) {
+    if (widget.configuration.autoDispose) {
       _controller.dispose();
     }
+    _initializationSubscription.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
-      aspectRatio: widget.aspectRatio,
+      aspectRatio: widget.configuration.aspectRatio,
       child: Builder(
         builder: (context) {
           if (_initializationEvent == null ||
@@ -72,16 +66,9 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
               child: Text('Error initializing video player.'),
             );
           }
-          return Stack(
-            children: [
-              VideoPlayer(_controller.videoPlayerController!),
-              if (widget.controlsVisible)
-                Positioned.fill(
-                  child: PlayerControls(
-                    controller: _controller,
-                  ),
-                ),
-            ],
+          return PlayerBuilder(
+            controller: _controller,
+            configuration: widget.configuration,
           );
         },
       ),

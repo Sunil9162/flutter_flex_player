@@ -40,6 +40,13 @@ class _PlayerControlsState extends State<PlayerControls>
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
+    if (mounted) {
+      _playPauseController.forward();
+      _animationController.forward();
+      if (_controller.isPlaying) {
+        _playPauseController.reverse();
+      }
+    }
   }
 
   @override
@@ -120,7 +127,7 @@ class _PlayerControlsState extends State<PlayerControls>
                   stream: _controller.onPositionChanged,
                   builder: (context, snapshot) {
                     final duration = _controller.duration;
-                    final position = snapshot.data ?? Duration.zero;
+                    final position = snapshot.data ?? _controller.position;
                     return ProgressBar(
                       thumbCanPaintOutsideBar: false,
                       progress: position,
@@ -222,7 +229,7 @@ class _PlayerControlsState extends State<PlayerControls>
             width: 30,
             alignment: Alignment.center,
             child: const Icon(
-              Icons.settings_rounded,
+              Icons.more_vert,
               color: Colors.white,
               size: 20,
             ),
