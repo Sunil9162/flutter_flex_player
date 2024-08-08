@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
 import 'package:video_player/video_player.dart';
 
+import 'controls/player_controls.dart';
 import 'helpers/enums.dart';
 
 // FlutterFlexPlayer is a class that will be used to create a FlutterFlexPlayer widget.
@@ -20,7 +21,7 @@ class FlutterFlexPlayer extends StatefulWidget {
     super.key,
     this.isFullScreen = false,
     this.controlsVisible = true,
-    this.orientationonFullScreen = Orientation.portrait,
+    this.orientationonFullScreen = Orientation.landscape,
     this.thumbnail,
     this.aspectRatio = 16 / 9,
     this.autoDispose = true,
@@ -38,6 +39,7 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
   void initState() {
     super.initState();
     _controller = widget.controller;
+    _controller.aspectRatio = widget.aspectRatio;
     _controller.onInitialized.listen((event) {
       setState(() {
         _initializationEvent = event;
@@ -55,20 +57,34 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    if (_initializationEvent == null ||
-        _initializationEvent == InitializationEvent.initializing) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    }
-    if (_initializationEvent == InitializationEvent.uninitialized) {
-      return const Center(
-        child: Text('Error initializing video player.'),
-      );
-    }
     return AspectRatio(
       aspectRatio: widget.aspectRatio,
-      child: VideoPlayer(_controller.videoPlayerController!),
+      child: Builder(
+        builder: (context) {
+          if (_initializationEvent == null ||
+              _initializationEvent == InitializationEvent.initializing) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+          if (_initializationEvent == InitializationEvent.uninitialized) {
+            return const Center(
+              child: Text('Error initializing video player.'),
+            );
+          }
+          return Stack(
+            children: [
+              VideoPlayer(_controller.videoPlayerController!),
+              if (widget.controlsVisible)
+                Positioned.fill(
+                  child: PlayerControls(
+                    controller: _controller,
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

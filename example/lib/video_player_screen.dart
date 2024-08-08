@@ -23,6 +23,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           'https://live-par-2-abr.livepush.io/vod/bigbuckbunnyclip.mp4',
         ),
         autoPlay: true,
+        loop: true,
       );
     });
   }

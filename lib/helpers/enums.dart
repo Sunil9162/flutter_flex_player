@@ -11,3 +11,10 @@ enum PlayerState {
   buffering,
   ended,
 }
+
+enum ControlsStyle {
+  defaultStyle,
+  style1,
+  style2,
+  customStyle,
+}

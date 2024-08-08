@@ -19,3 +19,9 @@ class FileFlexPlayerSource extends FlexPlayerSource {
   final File file;
   FileFlexPlayerSource(this.file);
 }
+
+class YouTubeFlexPlayerSource extends FlexPlayerSource {
+  /// The YouTube video ID to play.
+  final String videoId;
+  YouTubeFlexPlayerSource(this.videoId);
+}

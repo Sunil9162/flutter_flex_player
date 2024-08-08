@@ -9,12 +9,13 @@ environment:
 
 dependencies:
   audio_video_progress_bar: ^2.0.3
-  video_player: 
   flutter:
     sdk: flutter
+  video_player: null
+  youtube_explode_dart: ^2.2.1
 
 dev_dependencies:
-  flutter_lints: ^3.0.0
+  flutter_lints: ^4.0.0
   flutter_test:
     sdk: flutter
 

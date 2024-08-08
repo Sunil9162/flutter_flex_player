@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 
 import 'flutter_flex_player_abstract.dart';
 import 'helpers/enums.dart';
+import 'pages/full_screen_page.dart';
 
 class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   factory FlutterFlexPlayerController() {
@@ -65,6 +66,18 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
 
   Stream<Duration> get onDurationChanged => _durationstream.stream;
 
+  /// Buffer position of the video player.
+  Duration get bufferedPosition {
+    if (isInitialized) {
+      final buffered = _videoPlayerController.value.buffered;
+      //  Convert the buffered position to a duration.
+      if (buffered.isNotEmpty) {
+        return buffered.last.end;
+      }
+    }
+    return Duration.zero;
+  }
+
   /// Returns whether the video player is playing.
   bool get isPlaying {
     if (isInitialized) {
@@ -112,27 +125,38 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
     return 0;
   }
 
+  VoidCallback? listner;
+
   void _startListeners() {
-    _videoPlayerController.addListener(() async {
+    _durationstream.add(_videoPlayerController.value.duration);
+    listner = () async {
       if (_videoPlayerController.value.hasError) {
         _initializationstream.add(InitializationEvent.uninitialized);
       }
       if (_videoPlayerController.value.isInitialized) {
         _initializationstream.add(InitializationEvent.initialized);
-        if ((await _durationstream.stream.last) !=
-            _videoPlayerController.value.duration) {
-          _durationstream.add(_videoPlayerController.value.duration);
-        }
+
         _positionstream.add(_videoPlayerController.value.position);
         _updatePlayerState();
       }
-    });
+    };
+    _videoPlayerController.addListener(listner!);
   }
+
+  void _stopListeners() {
+    if (listner != null) _videoPlayerController.removeListener(listner!);
+  }
+
+  double aspectRatio = 16 / 9;
 
   void _updatePlayerState() {
     if (_videoPlayerController.value.isPlaying) {
       _playerstatestream.add(PlayerState.playing);
-    } else {
+    } else if (_videoPlayerController.value.isBuffering) {
+      _playerstatestream.add(PlayerState.buffering);
+    } else if (_videoPlayerController.value.isCompleted) {
+      _playerstatestream.add(PlayerState.ended);
+    } else if (!isPlaying) {
       _playerstatestream.add(PlayerState.paused);
     }
   }
@@ -158,6 +182,11 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
         );
       } else if (source is FileFlexPlayerSource) {
         _videoPlayerController = VideoPlayerController.file(source.file);
+      } else if (source is YouTubeFlexPlayerSource) {
+        // _videoPlayerController = VideoPlayerController.networkUrl(
+        //   Uri.parse('https://www.youtube.com/watch?v=${source.videoId}'),
+        // );
+        throw UnimplementedError('YouTubeFlexPlayerSource is not implemented.');
       }
       await _videoPlayerController.initialize().then((_) async {
         _startListeners();
@@ -184,42 +213,60 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
 
   @override
   void pause() {
-    // TODO: implement pause
+    if (isInitialized) {
+      _videoPlayerController.pause();
+    }
   }
 
   @override
   void play() {
-    // TODO: implement play
+    if (isInitialized) {
+      _videoPlayerController.play();
+    }
   }
 
   @override
   void seekTo(Duration position) {
-    // TODO: implement seekTo
+    if (isInitialized) {
+      _videoPlayerController.seekTo(position);
+    }
   }
 
   @override
   void setLooping(bool looping) {
-    // TODO: implement setLooping
+    if (isInitialized) {
+      _videoPlayerController.setLooping(looping);
+    }
   }
 
   @override
   void setMute(bool mute) {
-    // TODO: implement setMute
+    if (isInitialized) {
+      _videoPlayerController.setVolume(mute ? 0 : 1);
+    }
   }
 
   @override
   void setPlaybackSpeed(double speed) {
-    // TODO: implement setPlaybackSpeed
+    if (isInitialized) {
+      _videoPlayerController.setPlaybackSpeed(speed);
+    }
   }
 
   @override
   void setVolume(double volume) {
-    // TODO: implement setVolume
+    if (isInitialized) {
+      _videoPlayerController.setVolume(volume);
+    }
   }
 
   @override
   void stop() {
-    // TODO: implement stop
+    if (isInitialized) {
+      _videoPlayerController.pause();
+      _videoPlayerController.seekTo(Duration.zero);
+      _playerstatestream.add(PlayerState.stopped);
+    }
   }
 
   @override
@@ -229,5 +276,35 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
     _positionstream.close();
     _durationstream.close();
     _playerstatestream.close();
+    _stopListeners();
+  }
+
+  bool _isFullScreen = false;
+
+  bool get isFullScreen => _isFullScreen;
+
+  @override
+  void enterFullScreen(BuildContext context) async {
+    _isFullScreen = true;
+    await Navigator.push(
+      context,
+      PageRouteBuilder<dynamic>(
+        fullscreenDialog: true,
+        pageBuilder: (BuildContext context, _, __) => const FullScreenView(),
+        reverseTransitionDuration: const Duration(milliseconds: 400),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+            FadeTransition(
+          opacity: animation,
+          child: child,
+        ),
+      ),
+    );
+    _isFullScreen = false;
+  }
+
+  @override
+  void exitFullScreen(BuildContext context) {
+    _isFullScreen = false;
+    Navigator.of(context).pop();
   }
 }

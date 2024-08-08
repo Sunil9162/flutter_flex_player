@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_flex_player/helpers/flex_player_sources.dart';
 
 abstract class FlutterFlexPlayerAbstract {
@@ -11,4 +12,6 @@ abstract class FlutterFlexPlayerAbstract {
   void setLooping(bool looping);
   void setMute(bool mute);
   void dispose();
+  void enterFullScreen(BuildContext context);
+  void exitFullScreen(BuildContext context);
 }
