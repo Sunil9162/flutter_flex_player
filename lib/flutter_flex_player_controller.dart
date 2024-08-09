@@ -1,10 +1,14 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_flex_player/helpers/extensions.dart';
 import 'package:flutter_flex_player/helpers/flex_player_sources.dart';
 import 'package:video_player/video_player.dart';
 
+import 'controllers/youtube_controller.dart';
 import 'flutter_flex_player_abstract.dart';
 import 'helpers/configuration.dart';
 import 'helpers/enums.dart';
@@ -23,10 +27,7 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
 
   late VideoPlayerController _videoPlayerController;
 
-  VideoPlayerController? get videoPlayerController =>
-      _videoPlayerController.value.isInitialized
-          ? _videoPlayerController
-          : null;
+  VideoPlayerController get videoPlayerController => _videoPlayerController;
 
   /// Returns whether the video player is initialized.
   bool get isInitialized => _videoPlayerController.value.isInitialized;
@@ -45,6 +46,8 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
     }
     return Duration.zero;
   }
+
+  Duration _previousPosition = Duration.zero;
 
   /// Stream of [Duration] emitted when the video player position changes.
   /// The stream emits the current position of the video player.
@@ -127,9 +130,16 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
     return 0;
   }
 
+  /// On PlayBack Speed Change Stream
+  final StreamController<double> _playbackSpeedStream =
+      StreamController<double>.broadcast();
+
+  Stream<double> get onPlaybackSpeedChanged => _playbackSpeedStream.stream;
+
   VoidCallback? listner;
 
   void _startListeners() {
+    _stopListeners();
     _durationstream.add(_videoPlayerController.value.duration);
     listner = () async {
       if (_videoPlayerController.value.hasError) {
@@ -137,9 +147,12 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
       }
       if (_videoPlayerController.value.isInitialized) {
         _initializationstream.add(InitializationEvent.initialized);
-
         _positionstream.add(_videoPlayerController.value.position);
+        if (_videoPlayerController.value.hasError == false) {
+          _previousPosition = _videoPlayerController.value.position;
+        }
         _updatePlayerState();
+        _playbackSpeedStream.add(_videoPlayerController.value.playbackSpeed);
       }
     };
     _videoPlayerController.addListener(listner!);
@@ -148,8 +161,6 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   void _stopListeners() {
     if (listner != null) _videoPlayerController.removeListener(listner!);
   }
-
-  double aspectRatio = 16 / 9;
 
   void _updatePlayerState() {
     if (_videoPlayerController.value.isPlaying) {
@@ -163,6 +174,12 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
     }
   }
 
+  FlexPlayerSource? _source;
+  FlexPlayerSource? get source => _source;
+
+  double aspectRatio = 16 / 9;
+
+  /// Load the video player with the given [source].
   @override
   void load(
     FlexPlayerSource source, {
@@ -176,19 +193,40 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   }) async {
     _initializationstream.add(InitializationEvent.initializing);
     try {
+      _source = source;
+      configuration = configuration.copyWith(
+        autoPlay: autoPlay,
+        loop: loop,
+        volume: volume,
+        playbackSpeed: playbackSpeed,
+        position: position,
+        isPlaying: autoPlay,
+      );
       if (source is AssetFlexPlayerSource) {
         _videoPlayerController = VideoPlayerController.asset(source.asset);
       } else if (source is NetworkFlexPlayerSource) {
         _videoPlayerController = VideoPlayerController.networkUrl(
+          videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
           Uri.parse(source.url),
         );
       } else if (source is FileFlexPlayerSource) {
         _videoPlayerController = VideoPlayerController.file(source.file);
       } else if (source is YouTubeFlexPlayerSource) {
-        // _videoPlayerController = VideoPlayerController.networkUrl(
-        //   Uri.parse('https://www.youtube.com/watch?v=${source.videoId}'),
-        // );
-        throw UnimplementedError('YouTubeFlexPlayerSource is not implemented.');
+        final videoId = source.videoId;
+        final flexYoutubecontroller = FlexYoutubeController();
+        await flexYoutubecontroller.getVideoInfo(videoId).then(
+          (value) {
+            qualities = flexYoutubecontroller.videosList
+                .map((e) => e.quality)
+                .toSet()
+                .toList();
+            final streamInfo = flexYoutubecontroller.videosList.first;
+            selectedQuality = flexYoutubecontroller.videosList.first.quality;
+            _videoPlayerController = VideoPlayerController.networkUrl(
+              Uri.parse(streamInfo.url.toString()),
+            );
+          },
+        );
       }
       await _videoPlayerController.initialize().then((_) async {
         _startListeners();
@@ -214,9 +252,33 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   }
 
   @override
+  void reload() async {
+    _initializationstream.add(InitializationEvent.initializing);
+    try {
+      await Future.wait([
+        _videoPlayerController.initialize(),
+      ]);
+      await Future.wait([
+        _videoPlayerController.seekTo(_previousPosition),
+      ]);
+
+      _videoPlayerController.setPlaybackSpeed(configuration.playbackSpeed);
+      _videoPlayerController.setVolume(configuration.volume);
+      _videoPlayerController.setLooping(configuration.loop);
+      if (configuration.isPlaying) {
+        _videoPlayerController.play();
+      }
+      _startListeners();
+    } catch (e) {
+      _initializationstream.add(InitializationEvent.uninitialized);
+    }
+  }
+
+  @override
   void pause() {
     if (isInitialized) {
       _videoPlayerController.pause();
+      configuration = configuration.copyWith(isPlaying: false);
     }
   }
 
@@ -224,13 +286,14 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   void play() {
     if (isInitialized) {
       _videoPlayerController.play();
+      configuration = configuration.copyWith(isPlaying: true);
     }
   }
 
   @override
-  void seekTo(Duration position) {
+  void seekTo(Duration position) async {
     if (isInitialized) {
-      _videoPlayerController.seekTo(position);
+      await _videoPlayerController.seekTo(position);
     }
   }
 
@@ -238,6 +301,7 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   void setLooping(bool looping) {
     if (isInitialized) {
       _videoPlayerController.setLooping(looping);
+      configuration = configuration.copyWith(loop: looping);
     }
   }
 
@@ -245,6 +309,7 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   void setMute(bool mute) {
     if (isInitialized) {
       _videoPlayerController.setVolume(mute ? 0 : 1);
+      configuration = configuration.copyWith(volume: mute ? 0 : 1);
     }
   }
 
@@ -252,6 +317,7 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   void setPlaybackSpeed(double speed) {
     if (isInitialized) {
       _videoPlayerController.setPlaybackSpeed(speed);
+      configuration = configuration.copyWith(playbackSpeed: speed);
     }
   }
 
@@ -259,6 +325,7 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   void setVolume(double volume) {
     if (isInitialized) {
       _videoPlayerController.setVolume(volume);
+      configuration = configuration.copyWith(volume: volume);
     }
   }
 
@@ -268,6 +335,7 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
       _videoPlayerController.pause();
       _videoPlayerController.seekTo(Duration.zero);
       _playerstatestream.add(PlayerState.stopped);
+      configuration = configuration.copyWith(isPlaying: false);
     }
   }
 
@@ -284,7 +352,7 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   bool _isFullScreen = false;
   bool get isFullScreen => _isFullScreen;
 
-  FlexPlayerConfiguration get configuration => FlexPlayerConfiguration();
+  FlexPlayerConfiguration configuration = FlexPlayerConfiguration();
 
   @override
   void enterFullScreen(BuildContext context) async {
@@ -338,8 +406,326 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
       overlays: SystemUiOverlay.values,
     );
     _isFullScreen = false;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Navigator.pop(context);
+    Navigator.pop(context);
+  }
+
+  bool isControlsVisible = true;
+
+  Timer? _timer;
+
+  void startTimer(AnimationController animationController) {
+    if (_timer != null) {
+      _timer!.cancel();
+    }
+    _timer = Timer(const Duration(seconds: 3), () {
+      if (isControlsVisible && _videoPlayerController.value.isPlaying) {
+        animationController.reset();
+        isControlsVisible = false;
+      }
     });
+  }
+
+  final List<String> _speeds = [
+    '0.25x',
+    '0.5x',
+    '0.75x',
+    'Normal',
+    '1.25x',
+    '1.5x',
+    '1.75x',
+    '2x',
+  ];
+
+  void showSpeedDialog(BuildContext context) {
+    if (context.orientation == Orientation.landscape) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            title: const Text(
+              'Playback Speed',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: _speeds
+                    .map(
+                      (speed) => InkWell(
+                        onTap: () {
+                          Navigator.pop(context);
+                          final speedValue = double.parse(speed == "Normal"
+                              ? "1.0"
+                              : speed.replaceAll('x', ''));
+                          setPlaybackSpeed(speedValue);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 5,
+                            horizontal: 10,
+                          ),
+                          child: Row(
+                            children: [
+                              playbackSpeed ==
+                                      double.parse(speed == "Normal"
+                                          ? "1.0"
+                                          : speed.replaceAll('x', ''))
+                                  ? const Icon(
+                                      Icons.check_box_rounded,
+                                      color: Colors.blue,
+                                    )
+                                  : const Icon(
+                                      Icons.check_box_outline_blank,
+                                      color: Colors.grey,
+                                    ),
+                              10.widthBox,
+                              Text(speed),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          );
+        },
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(10),
+          ),
+        ),
+        isScrollControlled: true,
+        builder: (context) {
+          return Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Playback Speed',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Divider(),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _speeds.length,
+                  itemBuilder: (context, index) {
+                    final speed = _speeds[index];
+                    return InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        final speedValue = double.parse(speed == "Normal"
+                            ? "1.0"
+                            : speed.replaceAll('x', ''));
+                        setPlaybackSpeed(speedValue);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 2,
+                          horizontal: 5,
+                        ),
+                        child: Row(
+                          children: [
+                            playbackSpeed ==
+                                    double.parse(speed == "Normal"
+                                        ? "1.0"
+                                        : speed.replaceAll('x', ''))
+                                ? const Icon(
+                                    Icons.check_box_rounded,
+                                    color: Colors.blue,
+                                  )
+                                : const Icon(
+                                    Icons.check_box_outline_blank,
+                                    color: Colors.grey,
+                                  ),
+                            10.widthBox,
+                            Expanded(child: Text(speed)),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+  }
+
+  String selectedQuality = 'Auto';
+
+  /// On Quality Change Stream
+  final StreamController<String> _qualityStream =
+      StreamController<String>.broadcast();
+  Stream<String> get onQualityChanged => _qualityStream.stream;
+
+  List<String> qualities = [
+    'Auto',
+  ];
+
+  void showQualityDialog(BuildContext context) {
+    if (context.orientation == Orientation.landscape) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            title: const Text(
+              'Quality',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: qualities
+                    .map(
+                      (quality) => InkWell(
+                        onTap: () {
+                          Navigator.pop(context);
+                          selectedQuality = quality;
+                          _qualityStream.add(quality);
+                          setQuality(quality);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 5,
+                            horizontal: 10,
+                          ),
+                          child: Row(
+                            children: [
+                              selectedQuality == quality
+                                  ? const Icon(
+                                      Icons.check_box_rounded,
+                                      color: Colors.blue,
+                                    )
+                                  : const Icon(
+                                      Icons.check_box_outline_blank,
+                                      color: Colors.grey,
+                                    ),
+                              10.widthBox,
+                              Text(quality),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          );
+        },
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(10),
+          ),
+        ),
+        isScrollControlled: true,
+        builder: (context) {
+          return Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Quality',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Divider(),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: qualities.length,
+                  itemBuilder: (context, index) {
+                    final quality = qualities[index];
+                    return InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        selectedQuality = quality;
+                        _qualityStream.add(quality);
+                        setQuality(quality);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 2,
+                          horizontal: 5,
+                        ),
+                        child: Row(
+                          children: [
+                            selectedQuality == quality
+                                ? const Icon(
+                                    Icons.check_box_rounded,
+                                    color: Colors.blue,
+                                  )
+                                : const Icon(
+                                    Icons.check_box_outline_blank,
+                                    color: Colors.grey,
+                                  ),
+                            10.widthBox,
+                            Expanded(child: Text(quality)),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+  }
+
+  @override
+  void setQuality(String quality) async {
+    if (isInitialized) {
+      _videoPlayerController.dispose();
+      if (source is YouTubeFlexPlayerSource) {
+        final flexYoutubecontroller = FlexYoutubeController();
+        final video = flexYoutubecontroller.videosList.firstWhere(
+          (element) => element.quality == quality,
+        );
+        final url = video.url.toString();
+        _videoPlayerController = VideoPlayerController.networkUrl(
+          Uri.parse(url),
+        );
+        reload();
+      }
+    }
   }
 }

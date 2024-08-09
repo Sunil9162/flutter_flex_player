@@ -7,6 +7,13 @@ class FlexPlayerConfiguration {
   final String? thumbnail;
   final double aspectRatio;
   final bool autoDispose;
+  final bool autoPlay;
+  final bool loop;
+  final bool showControls;
+  final double volume;
+  final double playbackSpeed;
+  final Duration? position;
+  final bool isPlaying;
 
   FlexPlayerConfiguration({
     this.isFullScreen = false,
@@ -15,6 +22,13 @@ class FlexPlayerConfiguration {
     this.thumbnail,
     this.aspectRatio = 16 / 9,
     this.autoDispose = true,
+    this.autoPlay = true,
+    this.loop = false,
+    this.showControls = true,
+    this.volume = 1.0,
+    this.playbackSpeed = 1.0,
+    this.position,
+    this.isPlaying = false,
   });
 
   FlexPlayerConfiguration copyWith({
@@ -24,6 +38,13 @@ class FlexPlayerConfiguration {
     String? thumbnail,
     double? aspectRatio,
     bool? autoDispose,
+    bool? autoPlay,
+    bool? loop,
+    bool? showControls,
+    double? volume,
+    double? playbackSpeed,
+    Duration? position,
+    bool? isPlaying,
   }) {
     return FlexPlayerConfiguration(
       isFullScreen: isFullScreen ?? this.isFullScreen,
@@ -33,6 +54,13 @@ class FlexPlayerConfiguration {
       thumbnail: thumbnail ?? this.thumbnail,
       aspectRatio: aspectRatio ?? this.aspectRatio,
       autoDispose: autoDispose ?? this.autoDispose,
+      autoPlay: autoPlay ?? this.autoPlay,
+      loop: loop ?? this.loop,
+      showControls: showControls ?? this.showControls,
+      volume: volume ?? this.volume,
+      playbackSpeed: playbackSpeed ?? this.playbackSpeed,
+      position: position ?? this.position,
+      isPlaying: isPlaying ?? this.isPlaying,
     );
   }
 }

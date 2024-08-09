@@ -14,4 +14,6 @@ abstract class FlutterFlexPlayerAbstract {
   void dispose();
   void enterFullScreen(BuildContext context);
   void exitFullScreen(BuildContext context);
+  void reload();
+  void setQuality(String quality);
 }

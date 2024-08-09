@@ -23,5 +23,6 @@ class FileFlexPlayerSource extends FlexPlayerSource {
 class YouTubeFlexPlayerSource extends FlexPlayerSource {
   /// The YouTube video ID to play.
   final String videoId;
-  YouTubeFlexPlayerSource(this.videoId);
+  final bool isLive;
+  YouTubeFlexPlayerSource(this.videoId, {this.isLive = false});
 }

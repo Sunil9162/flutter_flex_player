@@ -25,7 +25,7 @@ class _PlayerControlsState extends State<PlayerControls>
   late FlutterFlexPlayerController _controller;
   late AnimationController _animationController;
   late AnimationController _playPauseController;
-  bool _isControlsVisible = false;
+  late StreamSubscription<PlayerState>? _playerStateSubscription;
   Timer? _timer;
 
   @override
@@ -40,12 +40,20 @@ class _PlayerControlsState extends State<PlayerControls>
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
+    _playerStateSubscription = _controller.onPlayerStateChanged.listen((state) {
+      if (state == PlayerState.playing) {
+        _playPauseController.reverse();
+      } else {
+        _playPauseController.forward();
+      }
+    });
     if (mounted) {
       _playPauseController.forward();
       _animationController.forward();
       if (_controller.isPlaying) {
         _playPauseController.reverse();
       }
+      _controller.startTimer(_animationController);
     }
   }
 
@@ -54,32 +62,21 @@ class _PlayerControlsState extends State<PlayerControls>
     _timer?.cancel();
     _animationController.dispose();
     _playPauseController.dispose();
+    _playerStateSubscription?.cancel();
     super.dispose();
-  }
-
-  startTimer() {
-    if (_timer != null) {
-      _timer!.cancel();
-    }
-    _timer = Timer(const Duration(seconds: 3), () {
-      if (_isControlsVisible && _controller.isPlaying) {
-        _animationController.reset();
-        _isControlsVisible = false;
-      }
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        if (_isControlsVisible) {
+        if (_controller.isControlsVisible) {
           _animationController.reset();
         } else {
           _animationController.forward();
         }
-        _isControlsVisible = !_isControlsVisible;
-        startTimer();
+        _controller.isControlsVisible = !_controller.isControlsVisible;
+        _controller.startTimer(_animationController);
       },
       child: AspectRatio(
         aspectRatio: _controller.aspectRatio,
@@ -93,7 +90,7 @@ class _PlayerControlsState extends State<PlayerControls>
               child: ColoredBox(
                 color: Colors.black.withOpacity(0.6),
                 child: IgnorePointer(
-                  ignoring: !_isControlsVisible,
+                  ignoring: !_controller.isControlsVisible,
                   child: Stack(
                     children: [
                       centerButtons(),
@@ -198,7 +195,7 @@ class _PlayerControlsState extends State<PlayerControls>
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            // _controller.toggleFullScreen();
+            _controller.showSpeedDialog(context);
           },
           child: Container(
             height: 30,
@@ -222,7 +219,7 @@ class _PlayerControlsState extends State<PlayerControls>
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            // _controller.toggleFullScreen();
+            _controller.showQualityDialog(context);
           },
           child: Container(
             height: 30,
@@ -277,12 +274,10 @@ class _PlayerControlsState extends State<PlayerControls>
             onPressed: () {
               if (_controller.isPlaying) {
                 _controller.pause();
-                _playPauseController.forward();
               } else {
                 _controller.play();
-                _playPauseController.reverse();
               }
-              startTimer();
+              _controller.startTimer(_animationController);
             },
           ),
           (context.width * 0.1).widthBox,

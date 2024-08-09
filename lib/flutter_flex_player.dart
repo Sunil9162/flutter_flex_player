@@ -53,24 +53,46 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
   Widget build(BuildContext context) {
     return AspectRatio(
       aspectRatio: widget.configuration.aspectRatio,
-      child: Builder(
-        builder: (context) {
-          if (_initializationEvent == null ||
-              _initializationEvent == InitializationEvent.initializing) {
-            return const Center(
-              child: CircularProgressIndicator(),
+      child: ColoredBox(
+        color: Colors.black,
+        child: Builder(
+          builder: (context) {
+            if (_initializationEvent == null ||
+                _initializationEvent == InitializationEvent.initializing) {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+            if (_initializationEvent == InitializationEvent.uninitialized) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.warning_rounded,
+                      color: Colors.red,
+                      size: 30,
+                    ),
+                    const Text(
+                      'Error playing video.',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        _controller.reload();
+                      },
+                      icon: const Icon(Icons.refresh),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return PlayerBuilder(
+              controller: _controller,
+              configuration: widget.configuration,
             );
-          }
-          if (_initializationEvent == InitializationEvent.uninitialized) {
-            return const Center(
-              child: Text('Error initializing video player.'),
-            );
-          }
-          return PlayerBuilder(
-            controller: _controller,
-            configuration: widget.configuration,
-          );
-        },
+          },
+        ),
       ),
     );
   }
