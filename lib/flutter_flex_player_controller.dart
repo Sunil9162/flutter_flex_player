@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_flex_player/helpers/extensions.dart';
 import 'package:flutter_flex_player/helpers/flex_player_sources.dart';
+import 'package:get/state_manager.dart';
 import 'package:video_player/video_player.dart';
 
 import 'controllers/youtube_controller.dart';
@@ -13,6 +14,8 @@ import 'flutter_flex_player_abstract.dart';
 import 'helpers/configuration.dart';
 import 'helpers/enums.dart';
 import 'pages/full_screen_page.dart';
+
+export 'helpers/enums.dart';
 
 class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   factory FlutterFlexPlayerController() {
@@ -30,7 +33,13 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   VideoPlayerController get videoPlayerController => _videoPlayerController;
 
   /// Returns whether the video player is initialized.
-  bool get isInitialized => _videoPlayerController.value.isInitialized;
+  bool get isInitialized {
+    try {
+      return _videoPlayerController.value.isInitialized;
+    } catch (e) {
+      return false;
+    }
+  }
 
   /// Stream of [InitializationEvent] emitted when the video player is initialized.
   /// The stream emits whether the video player is initialized.
@@ -141,7 +150,7 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   void _startListeners() {
     _stopListeners();
     _durationstream.add(_videoPlayerController.value.duration);
-    listner = () async {
+    listner = () {
       if (_videoPlayerController.value.hasError) {
         _initializationstream.add(InitializationEvent.uninitialized);
       }
@@ -177,7 +186,7 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   FlexPlayerSource? _source;
   FlexPlayerSource? get source => _source;
 
-  double aspectRatio = 16 / 9;
+  Worker? worker;
 
   /// Load the video player with the given [source].
   @override
@@ -213,8 +222,8 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
         _videoPlayerController = VideoPlayerController.file(source.file);
       } else if (source is YouTubeFlexPlayerSource) {
         final videoId = source.videoId;
-        final flexYoutubecontroller = FlexYoutubeController();
-        await flexYoutubecontroller.getVideoInfo(videoId).then(
+        final flexYoutubecontroller = FlexYoutubeController.instance;
+        await flexYoutubecontroller.getInitialUrl(videoId).then(
           (value) {
             qualities = flexYoutubecontroller.videosList
                 .map((e) => e.quality)
@@ -227,6 +236,10 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
             );
           },
         );
+        flexYoutubecontroller.getVideoInfo(videoId);
+        worker = ever(FlexYoutubeController.instance.videosList, (value) {
+          qualities = value.map((e) => e.quality).toSet().toList();
+        });
       }
       await _videoPlayerController.initialize().then((_) async {
         _startListeners();
@@ -255,13 +268,9 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   void reload() async {
     _initializationstream.add(InitializationEvent.initializing);
     try {
-      await Future.wait([
-        _videoPlayerController.initialize(),
-      ]);
-      await Future.wait([
-        _videoPlayerController.seekTo(_previousPosition),
-      ]);
-
+      await _videoPlayerController.initialize();
+      await _videoPlayerController.seekTo(_previousPosition);
+      _positionstream.add(_previousPosition);
       _videoPlayerController.setPlaybackSpeed(configuration.playbackSpeed);
       _videoPlayerController.setVolume(configuration.volume);
       _videoPlayerController.setLooping(configuration.loop);
@@ -346,6 +355,7 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
     _positionstream.close();
     _durationstream.close();
     _playerstatestream.close();
+    worker?.dispose();
     _stopListeners();
   }
 
@@ -407,22 +417,6 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
     );
     _isFullScreen = false;
     Navigator.pop(context);
-  }
-
-  bool isControlsVisible = true;
-
-  Timer? _timer;
-
-  void startTimer(AnimationController animationController) {
-    if (_timer != null) {
-      _timer!.cancel();
-    }
-    _timer = Timer(const Duration(seconds: 3), () {
-      if (isControlsVisible && _videoPlayerController.value.isPlaying) {
-        animationController.reset();
-        isControlsVisible = false;
-      }
-    });
   }
 
   final List<String> _speeds = [
@@ -716,7 +710,7 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
     if (isInitialized) {
       _videoPlayerController.dispose();
       if (source is YouTubeFlexPlayerSource) {
-        final flexYoutubecontroller = FlexYoutubeController();
+        final flexYoutubecontroller = FlexYoutubeController.instance;
         final video = flexYoutubecontroller.videosList.firstWhere(
           (element) => element.quality == quality,
         );

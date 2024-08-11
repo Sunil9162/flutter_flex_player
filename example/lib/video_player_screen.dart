@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_flex_player/controllers/youtube_controller.dart';
 import 'package:flutter_flex_player/flutter_flex_player.dart';
 import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
 import 'package:flutter_flex_player/helpers/configuration.dart';
@@ -26,10 +28,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         //   // "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4",
         // ),
         YouTubeFlexPlayerSource(
-          "KPHy1iS3blY",
+          "6XNTtcvErZc",
         ),
-        autoPlay: true,
+        autoPlay: false,
         loop: true,
+      );
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+      SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.manual,
+        overlays: SystemUiOverlay.values,
       );
     });
   }
@@ -40,9 +50,22 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       appBar: AppBar(
         title: const Text('VideoPlayerScreen'),
       ),
-      body: FlutterFlexPlayer(
-        _controller,
-        configuration: FlexPlayerConfiguration(),
+      body: Column(
+        children: [
+          FlutterFlexPlayer(
+            _controller,
+            configuration: FlexPlayerConfiguration(),
+          ),
+          const SizedBox(
+            height: 50,
+          ),
+          ElevatedButton(
+            onPressed: () {
+              FlexYoutubeController.instance.getVideoInfo("6XNTtcvErZc");
+            },
+            child: const Text("Get Info"),
+          ),
+        ],
       ),
     );
   }

@@ -1,11 +1,10 @@
-import 'dart:async';
+import 'dart:developer';
 
 import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_flex_player/controls/player_controller.dart';
 import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
 import 'package:flutter_flex_player/helpers/extensions.dart';
-
-import '../helpers/enums.dart';
 
 class PlayerControls extends StatefulWidget {
   final FlutterFlexPlayerController controller;
@@ -20,77 +19,34 @@ class PlayerControls extends StatefulWidget {
   State<PlayerControls> createState() => _PlayerControlsState();
 }
 
-class _PlayerControlsState extends State<PlayerControls>
-    with TickerProviderStateMixin {
-  late FlutterFlexPlayerController _controller;
-  late AnimationController _animationController;
-  late AnimationController _playPauseController;
-  late StreamSubscription<PlayerState>? _playerStateSubscription;
-  Timer? _timer;
+class _PlayerControlsState extends State<PlayerControls> {
+  final playerController = PlayerController.instance;
 
   @override
   void initState() {
     super.initState();
-    _controller = widget.controller;
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-    );
-    _playPauseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-    );
-    _playerStateSubscription = _controller.onPlayerStateChanged.listen((state) {
-      if (state == PlayerState.playing) {
-        _playPauseController.reverse();
-      } else {
-        _playPauseController.forward();
-      }
-    });
-    if (mounted) {
-      _playPauseController.forward();
-      _animationController.forward();
-      if (_controller.isPlaying) {
-        _playPauseController.reverse();
-      }
-      _controller.startTimer(_animationController);
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _animationController.dispose();
-    _playPauseController.dispose();
-    _playerStateSubscription?.cancel();
-    super.dispose();
+    playerController.initPlayer(widget.controller);
   }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        if (_controller.isControlsVisible) {
-          _animationController.reset();
-        } else {
-          _animationController.forward();
-        }
-        _controller.isControlsVisible = !_controller.isControlsVisible;
-        _controller.startTimer(_animationController);
+        playerController.toggleControlsVisibility();
       },
       child: AspectRatio(
-        aspectRatio: _controller.aspectRatio,
+        aspectRatio: widget.controller.configuration.aspectRatio,
         child: AnimatedBuilder(
-          animation: _animationController,
+          animation: playerController.animationController,
           builder: (context, child) {
-            final opacity = _animationController.value;
+            final opacity = playerController.animationController.value;
             return AnimatedOpacity(
               duration: const Duration(milliseconds: 200),
               opacity: opacity,
               child: ColoredBox(
                 color: Colors.black.withOpacity(0.6),
                 child: IgnorePointer(
-                  ignoring: !_controller.isControlsVisible,
+                  ignoring: !playerController.isControlsVisible.value,
                   child: Stack(
                     children: [
                       centerButtons(),
@@ -121,15 +77,17 @@ class _PlayerControlsState extends State<PlayerControls>
             children: [
               Expanded(
                 child: StreamBuilder<Duration>(
-                  stream: _controller.onPositionChanged,
+                  stream: playerController.player.onPositionChanged,
                   builder: (context, snapshot) {
-                    final duration = _controller.duration;
-                    final position = snapshot.data ?? _controller.position;
+                    final duration = playerController.player.duration;
+                    final position =
+                        snapshot.data ?? playerController.player.position;
+
                     return ProgressBar(
                       thumbCanPaintOutsideBar: false,
                       progress: position,
                       total: duration,
-                      buffered: _controller.bufferedPosition,
+                      buffered: playerController.player.bufferedPosition,
                       timeLabelTextStyle: const TextStyle(
                         fontSize: 12,
                         color: Colors.white,
@@ -139,7 +97,7 @@ class _PlayerControlsState extends State<PlayerControls>
                       barCapShape: BarCapShape.round,
                       barHeight: 3,
                       onSeek: (duration) {
-                        _controller.seekTo(duration);
+                        playerController.player.seekTo(duration);
                       },
                       progressBarColor: Colors.blue,
                       baseBarColor: Colors.grey.withOpacity(0.5),
@@ -167,11 +125,7 @@ class _PlayerControlsState extends State<PlayerControls>
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            if (_controller.isFullScreen) {
-              _controller.exitFullScreen(context);
-            } else {
-              _controller.enterFullScreen(context);
-            }
+            playerController.toggleFullScreen(context);
           },
           child: Container(
             height: 30,
@@ -195,7 +149,7 @@ class _PlayerControlsState extends State<PlayerControls>
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            _controller.showSpeedDialog(context);
+            playerController.showSpeedDialog(context);
           },
           child: Container(
             height: 30,
@@ -219,7 +173,7 @@ class _PlayerControlsState extends State<PlayerControls>
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            _controller.showQualityDialog(context);
+            playerController.showQualityDialog(context);
           },
           child: Container(
             height: 30,
@@ -248,36 +202,58 @@ class _PlayerControlsState extends State<PlayerControls>
               size: 30,
             ),
             onPressed: () {
-              _controller.seekTo(
-                _controller.position - const Duration(seconds: 10),
+              playerController.player.seekTo(
+                playerController.player.position - const Duration(seconds: 10),
               );
             },
           ),
           (context.width * 0.1).widthBox,
-          IconButton(
-            icon: StreamBuilder<PlayerState>(
-              stream: _controller.onPlayerStateChanged,
-              builder: (context, snapshot) {
-                if (snapshot.data == PlayerState.buffering) {
-                  return const CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation(Colors.white),
-                  );
-                }
-                return AnimatedIcon(
-                  icon: AnimatedIcons.pause_play,
-                  progress: _playPauseController,
-                  color: Colors.white,
-                  size: 35,
-                );
-              },
-            ),
-            onPressed: () {
-              if (_controller.isPlaying) {
-                _controller.pause();
-              } else {
-                _controller.play();
-              }
-              _controller.startTimer(_animationController);
+          StreamBuilder<InitializationEvent>(
+            stream: playerController.player.onInitialized,
+            builder: (context, initalization) {
+              log("Initaliazation ${initalization.data}");
+              return IgnorePointer(
+                ignoring:
+                    initalization.data == InitializationEvent.initializing,
+                child: IconButton(
+                  icon: initalization.data == InitializationEvent.initializing
+                      ? const CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation(Colors.white),
+                        )
+                      : initalization.data == InitializationEvent.uninitialized
+                          ? const Icon(
+                              Icons.replay,
+                              color: Colors.white,
+                              size: 35,
+                            )
+                          : StreamBuilder<PlayerState>(
+                              stream:
+                                  playerController.player.onPlayerStateChanged,
+                              builder: (context, snapshot) {
+                                if (snapshot.data == PlayerState.buffering) {
+                                  return const CircularProgressIndicator(
+                                    valueColor:
+                                        AlwaysStoppedAnimation(Colors.white),
+                                  );
+                                }
+                                return AnimatedIcon(
+                                  icon: AnimatedIcons.pause_play,
+                                  progress:
+                                      playerController.playPauseController,
+                                  color: Colors.white,
+                                  size: 35,
+                                );
+                              },
+                            ),
+                  onPressed: () {
+                    if (playerController.player.isInitialized) {
+                      playerController.togglePlayPause();
+                    } else {
+                      playerController.player.reload();
+                    }
+                  },
+                ),
+              );
             },
           ),
           (context.width * 0.1).widthBox,
@@ -288,8 +264,8 @@ class _PlayerControlsState extends State<PlayerControls>
               size: 30,
             ),
             onPressed: () {
-              _controller.seekTo(
-                _controller.position + const Duration(seconds: 10),
+              playerController.player.seekTo(
+                playerController.player.position + const Duration(seconds: 10),
               );
             },
           ),

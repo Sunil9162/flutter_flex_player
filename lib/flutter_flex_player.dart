@@ -1,13 +1,9 @@
 library flutter_flex_player;
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
 import 'package:flutter_flex_player/helpers/configuration.dart';
 import 'package:flutter_flex_player/pages/full_screen_page.dart';
-
-import 'helpers/enums.dart';
 
 // FlutterFlexPlayer is a class that will be used to create a FlutterFlexPlayer widget.
 class FlutterFlexPlayer extends StatefulWidget {
@@ -25,19 +21,11 @@ class FlutterFlexPlayer extends StatefulWidget {
 
 class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
   late FlutterFlexPlayerController _controller;
-  InitializationEvent? _initializationEvent;
-  late StreamSubscription<InitializationEvent> _initializationSubscription;
 
   @override
   void initState() {
     super.initState();
     _controller = widget.controller;
-    _controller.aspectRatio = widget.configuration.aspectRatio;
-    _initializationSubscription = _controller.onInitialized.listen((event) {
-      setState(() {
-        _initializationEvent = event;
-      });
-    });
   }
 
   @override
@@ -45,7 +33,6 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
     if (widget.configuration.autoDispose) {
       _controller.dispose();
     }
-    _initializationSubscription.cancel();
     super.dispose();
   }
 
@@ -55,43 +42,9 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
       aspectRatio: widget.configuration.aspectRatio,
       child: ColoredBox(
         color: Colors.black,
-        child: Builder(
-          builder: (context) {
-            if (_initializationEvent == null ||
-                _initializationEvent == InitializationEvent.initializing) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
-            }
-            if (_initializationEvent == InitializationEvent.uninitialized) {
-              return Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.warning_rounded,
-                      color: Colors.red,
-                      size: 30,
-                    ),
-                    const Text(
-                      'Error playing video.',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                    IconButton(
-                      onPressed: () {
-                        _controller.reload();
-                      },
-                      icon: const Icon(Icons.refresh),
-                    ),
-                  ],
-                ),
-              );
-            }
-            return PlayerBuilder(
-              controller: _controller,
-              configuration: widget.configuration,
-            );
-          },
+        child: PlayerBuilder(
+          controller: _controller,
+          configuration: widget.configuration,
         ),
       ),
     );
