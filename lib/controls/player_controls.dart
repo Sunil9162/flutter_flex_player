@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_flex_player/controls/player_controller.dart';
@@ -71,49 +69,58 @@ class _PlayerControlsState extends State<PlayerControls> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Row(
-            children: [
-              Expanded(
-                child: StreamBuilder<Duration>(
-                  stream: playerController.player.onPositionChanged,
-                  builder: (context, snapshot) {
-                    final duration = playerController.player.duration;
-                    final position =
-                        snapshot.data ?? playerController.player.position;
-
-                    return ProgressBar(
-                      thumbCanPaintOutsideBar: false,
-                      progress: position,
-                      total: duration,
-                      buffered: playerController.player.bufferedPosition,
-                      timeLabelTextStyle: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.white,
+        StreamBuilder<InitializationEvent>(
+            stream: playerController.player.onInitialized,
+            builder: (context, snapshot) {
+              return Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: IgnorePointer(
+                        ignoring: snapshot.data ==
+                                InitializationEvent.initializing ||
+                            snapshot.data == InitializationEvent.uninitialized,
+                        child: StreamBuilder<Duration>(
+                          stream: playerController.player.onPositionChanged,
+                          builder: (context, snapshot) {
+                            final duration = playerController.player.duration;
+                            final position = snapshot.data ??
+                                playerController.player.position;
+                            return ProgressBar(
+                              thumbCanPaintOutsideBar: false,
+                              progress: position,
+                              total: duration,
+                              buffered:
+                                  playerController.player.bufferedPosition,
+                              timeLabelTextStyle: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.white,
+                              ),
+                              timeLabelLocation: TimeLabelLocation.sides,
+                              thumbRadius: 6,
+                              barCapShape: BarCapShape.round,
+                              barHeight: 3,
+                              onSeek: (duration) {
+                                playerController.player.seekTo(duration);
+                              },
+                              progressBarColor: Colors.blue,
+                              baseBarColor: Colors.grey.withOpacity(0.5),
+                              bufferedBarColor: Colors.white.withOpacity(0.5),
+                              thumbColor: Colors.blue,
+                              thumbGlowRadius: 10,
+                            );
+                          },
+                        ),
                       ),
-                      timeLabelLocation: TimeLabelLocation.sides,
-                      thumbRadius: 6,
-                      barCapShape: BarCapShape.round,
-                      barHeight: 3,
-                      onSeek: (duration) {
-                        playerController.player.seekTo(duration);
-                      },
-                      progressBarColor: Colors.blue,
-                      baseBarColor: Colors.grey.withOpacity(0.5),
-                      bufferedBarColor: Colors.white.withOpacity(0.5),
-                      thumbColor: Colors.blue,
-                      thumbGlowRadius: 10,
-                    );
-                  },
+                    ),
+                    (context.width * 0.01).widthBox,
+                    playbackSpeedWidget(),
+                    fullScreenWidget(),
+                  ],
                 ),
-              ),
-              (context.width * 0.01).widthBox,
-              playbackSpeedWidget(),
-              fullScreenWidget(),
-            ],
-          ),
-        ),
+              );
+            }),
       ],
     );
   }
@@ -211,7 +218,6 @@ class _PlayerControlsState extends State<PlayerControls> {
           StreamBuilder<InitializationEvent>(
             stream: playerController.player.onInitialized,
             builder: (context, initalization) {
-              log("Initaliazation ${initalization.data}");
               return IgnorePointer(
                 ignoring:
                     initalization.data == InitializationEvent.initializing,

@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, invalid_use_of_protected_member
 
 import 'dart:async';
 
@@ -225,7 +225,7 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
         final flexYoutubecontroller = FlexYoutubeController.instance;
         await flexYoutubecontroller.getInitialUrl(videoId).then(
           (value) {
-            qualities = flexYoutubecontroller.videosList
+            qualities.value = flexYoutubecontroller.videosList
                 .map((e) => e.quality)
                 .toSet()
                 .toList();
@@ -238,7 +238,7 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
         );
         flexYoutubecontroller.getVideoInfo(videoId);
         worker = ever(FlexYoutubeController.instance.videosList, (value) {
-          qualities = value.map((e) => e.quality).toSet().toList();
+          qualities.value = value.map((e) => e.quality).toSet().toList();
         });
       }
       await _videoPlayerController.initialize().then((_) async {
@@ -573,9 +573,11 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
       StreamController<String>.broadcast();
   Stream<String> get onQualityChanged => _qualityStream.stream;
 
-  List<String> qualities = [
+  startAutoQuality() {}
+
+  RxList<String> qualities = <String>[
     'Auto',
-  ];
+  ].obs;
 
   void showQualityDialog(BuildContext context) {
     if (context.orientation == Orientation.landscape) {
@@ -594,11 +596,48 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: qualities
-                    .map(
+            content: Obx(() {
+              return SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        if (configuration.autoQuality) {
+                          configuration = configuration.copyWith(
+                            autoQuality: false,
+                          );
+                        } else {
+                          configuration = configuration.copyWith(
+                            autoQuality: true,
+                          );
+                        }
+                        startAutoQuality();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 5,
+                          horizontal: 10,
+                        ),
+                        child: Row(
+                          children: [
+                            configuration.autoQuality
+                                ? const Icon(
+                                    Icons.check_box_rounded,
+                                    color: Colors.blue,
+                                  )
+                                : const Icon(
+                                    Icons.check_box_outline_blank,
+                                    color: Colors.grey,
+                                  ),
+                            10.widthBox,
+                            const Expanded(child: Text("Auto")),
+                          ],
+                        ),
+                      ),
+                    ),
+                    ...qualities.value.map(
                       (quality) => InkWell(
                         onTap: () {
                           Navigator.pop(context);
@@ -629,9 +668,10 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
                         ),
                       ),
                     )
-                    .toList(),
-              ),
-            ),
+                  ],
+                ),
+              );
+            }),
           );
         },
       );
@@ -660,43 +700,85 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
                   ),
                 ),
                 const Divider(),
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: qualities.length,
-                  itemBuilder: (context, index) {
-                    final quality = qualities[index];
-                    return InkWell(
-                      onTap: () {
-                        Navigator.pop(context);
-                        selectedQuality = quality;
-                        _qualityStream.add(quality);
-                        setQuality(quality);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 2,
-                          horizontal: 5,
-                        ),
-                        child: Row(
-                          children: [
-                            selectedQuality == quality
-                                ? const Icon(
-                                    Icons.check_box_rounded,
-                                    color: Colors.blue,
-                                  )
-                                : const Icon(
-                                    Icons.check_box_outline_blank,
-                                    color: Colors.grey,
-                                  ),
-                            10.widthBox,
-                            Expanded(child: Text(quality)),
-                          ],
+                Obx(() {
+                  return Column(
+                    children: [
+                      InkWell(
+                        onTap: () {
+                          Navigator.pop(context);
+                          if (configuration.autoQuality) {
+                            configuration = configuration.copyWith(
+                              autoQuality: false,
+                            );
+                          } else {
+                            configuration = configuration.copyWith(
+                              autoQuality: true,
+                            );
+                          }
+                          startAutoQuality();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 2,
+                            horizontal: 5,
+                          ),
+                          child: Row(
+                            children: [
+                              configuration.autoQuality
+                                  ? const Icon(
+                                      Icons.check_box_rounded,
+                                      color: Colors.blue,
+                                    )
+                                  : const Icon(
+                                      Icons.check_box_outline_blank,
+                                      color: Colors.grey,
+                                    ),
+                              10.widthBox,
+                              const Expanded(child: Text("Auto")),
+                            ],
+                          ),
                         ),
                       ),
-                    );
-                  },
-                ),
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: qualities.value.length,
+                        itemBuilder: (context, index) {
+                          final quality = qualities[index];
+                          return InkWell(
+                            onTap: () {
+                              Navigator.pop(context);
+                              selectedQuality = quality;
+                              _qualityStream.add(quality);
+                              setQuality(quality);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 2,
+                                horizontal: 5,
+                              ),
+                              child: Row(
+                                children: [
+                                  selectedQuality == quality
+                                      ? const Icon(
+                                          Icons.check_box_rounded,
+                                          color: Colors.blue,
+                                        )
+                                      : const Icon(
+                                          Icons.check_box_outline_blank,
+                                          color: Colors.grey,
+                                        ),
+                                  10.widthBox,
+                                  Expanded(child: Text(quality)),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  );
+                }),
               ],
             ),
           );
@@ -707,19 +789,17 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
 
   @override
   void setQuality(String quality) async {
-    if (isInitialized) {
-      _videoPlayerController.dispose();
-      if (source is YouTubeFlexPlayerSource) {
-        final flexYoutubecontroller = FlexYoutubeController.instance;
-        final video = flexYoutubecontroller.videosList.firstWhere(
-          (element) => element.quality == quality,
-        );
-        final url = video.url.toString();
-        _videoPlayerController = VideoPlayerController.networkUrl(
-          Uri.parse(url),
-        );
-        reload();
-      }
+    _videoPlayerController.dispose();
+    if (source is YouTubeFlexPlayerSource) {
+      final flexYoutubecontroller = FlexYoutubeController.instance;
+      final video = flexYoutubecontroller.videosList.firstWhere(
+        (element) => element.quality == quality,
+      );
+      final url = video.url.toString();
+      _videoPlayerController = VideoPlayerController.networkUrl(
+        Uri.parse(url),
+      );
+      reload();
     }
   }
 }

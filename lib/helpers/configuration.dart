@@ -14,6 +14,7 @@ class FlexPlayerConfiguration {
   final double playbackSpeed;
   final Duration? position;
   final bool isPlaying;
+  final bool autoQuality;
 
   FlexPlayerConfiguration({
     this.isFullScreen = false,
@@ -29,6 +30,7 @@ class FlexPlayerConfiguration {
     this.playbackSpeed = 1.0,
     this.position,
     this.isPlaying = false,
+    this.autoQuality = true,
   });
 
   FlexPlayerConfiguration copyWith({
@@ -45,6 +47,7 @@ class FlexPlayerConfiguration {
     double? playbackSpeed,
     Duration? position,
     bool? isPlaying,
+    bool? autoQuality,
   }) {
     return FlexPlayerConfiguration(
       isFullScreen: isFullScreen ?? this.isFullScreen,
@@ -61,6 +64,7 @@ class FlexPlayerConfiguration {
       playbackSpeed: playbackSpeed ?? this.playbackSpeed,
       position: position ?? this.position,
       isPlaying: isPlaying ?? this.isPlaying,
+      autoQuality: autoQuality ?? this.autoQuality,
     );
   }
 }
