@@ -1,6 +1,6 @@
 # Flutter Flex Player
 [![Visits Badge](https://badges.pufler.dev/visits/Sunil9162/flutter_flex_player)]([https://badges.pufler.dev](https://badges.pufler.dev/visits/Sunil9162/flutter_flex_player))
-[![Updated Badge](https://badges.pufler.dev/updated/Sunil9162/flutter_flex_player)]([https://badges.pufler.dev])(https://badges.pufler.dev/visits/Sunil9162/flutter_flex_player)
+[![Updated Badge](https://badges.pufler.dev/updated/Sunil9162/flutter_flex_player)]([https://badges.pufler.dev](https://badges.pufler.dev/updated/Sunil9162/flutter_flex_player))
 
 **Flutter Flex Player** is a Flutter package for playing videos. It provides a flexible video player widget that supports various video sources including assets, network, file, and YouTube. Built with Dart and Flutter, this package allows you to integrate video playback easily into your Flutter applications.
 
