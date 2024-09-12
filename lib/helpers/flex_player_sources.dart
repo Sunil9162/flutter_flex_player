@@ -24,5 +24,10 @@ class YouTubeFlexPlayerSource extends FlexPlayerSource {
   /// The YouTube video ID to play.
   final String videoId;
   final bool isLive;
-  YouTubeFlexPlayerSource(this.videoId, {this.isLive = false});
+  final bool useIframe;
+  YouTubeFlexPlayerSource(
+    this.videoId, {
+    this.isLive = false,
+    this.useIframe = false,
+  });
 }

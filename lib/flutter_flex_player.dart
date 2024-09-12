@@ -8,11 +8,14 @@ import 'package:flutter_flex_player/pages/full_screen_page.dart';
 // FlutterFlexPlayer is a class that will be used to create a FlutterFlexPlayer widget.
 class FlutterFlexPlayer extends StatefulWidget {
   final FlutterFlexPlayerController controller;
-  final FlexPlayerConfiguration configuration;
+  final bool autoDispose;
+  final double aspectRatio;
+
   const FlutterFlexPlayer(
     this.controller, {
     super.key,
-    required this.configuration,
+    this.autoDispose = true,
+    this.aspectRatio = 16 / 9,
   });
 
   @override
@@ -21,16 +24,26 @@ class FlutterFlexPlayer extends StatefulWidget {
 
 class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
   late FlutterFlexPlayerController _controller;
+  late FlexPlayerConfiguration configuration;
 
   @override
   void initState() {
     super.initState();
     _controller = widget.controller;
+    configuration = _controller.configuration;
+    if (mounted) {
+      setState(() {
+        configuration = configuration.copyWith(
+          aspectRatio: widget.aspectRatio,
+          autoDispose: widget.autoDispose,
+        );
+      });
+    }
   }
 
   @override
   void dispose() {
-    if (widget.configuration.autoDispose) {
+    if (configuration.autoDispose) {
       _controller.dispose();
     }
     super.dispose();
@@ -39,12 +52,12 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
-      aspectRatio: widget.configuration.aspectRatio,
+      aspectRatio: configuration.aspectRatio,
       child: ColoredBox(
         color: Colors.black,
         child: PlayerBuilder(
           controller: _controller,
-          configuration: widget.configuration,
+          configuration: configuration,
         ),
       ),
     );

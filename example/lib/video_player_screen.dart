@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_flex_player/controllers/youtube_controller.dart';
 import 'package:flutter_flex_player/flutter_flex_player.dart';
 import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
-import 'package:flutter_flex_player/helpers/configuration.dart';
 import 'package:flutter_flex_player/helpers/flex_player_sources.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
@@ -22,14 +20,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _controller = FlutterFlexPlayerController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.load(
-        // NetworkFlexPlayerSource(
-        //   // 'https://live-par-2-abr.livepush.io/vod/bigbuckbunnyclip.mp4',
-        //   "https://videos.pexels.com/video-files/4115454/4115454-uhd_2560_1440_30fps.mp4",
-        //   // "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4",
-        // ),
-        YouTubeFlexPlayerSource(
-          "f4gIeP4Ve0E",
+        NetworkFlexPlayerSource(
+          // 'https://live-par-2-abr.livepush.io/vod/bigbuckbunnyclip.mp4',
+          // "https://videos.pexels.com/video-files/4115454/4115454-uhd_2560_1440_30fps.mp4",
+          // "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4",
+          "https://moctobpltc-i.akamaihd.net/hls/live/571329/eight/playlist.m3u8",
         ),
+        // YouTubeFlexPlayerSource(
+        //   "Nq2wYlWFucg",
+        //   isLive: true,
+        // ),
         autoPlay: false,
         loop: true,
       );
@@ -54,16 +54,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         children: [
           FlutterFlexPlayer(
             _controller,
-            configuration: FlexPlayerConfiguration(),
           ),
           const SizedBox(
             height: 50,
-          ),
-          ElevatedButton(
-            onPressed: () {
-              FlexYoutubeController.instance.getVideoInfo("6XNTtcvErZc");
-            },
-            child: const Text("Get Info"),
           ),
         ],
       ),

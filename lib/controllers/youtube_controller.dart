@@ -13,6 +13,8 @@ class FlexYoutubeController extends GetxController {
 
   RxList<VideoData> videosList = <VideoData>[].obs;
 
+  final yt = YoutubeExplode();
+
   String cleanHtmlString(String html) {
     // Remove \n and replace \/ with /
     String cleaned =
@@ -22,20 +24,37 @@ class FlexYoutubeController extends GetxController {
     return cleaned;
   }
 
-  Future<void> getInitialUrl(String videoId) async {
+  Future<void> getInitialUrl(String videoId, {bool isLive = false}) async {
     try {
       videosList.clear();
-      final videoinfo = await YoutubeExplode().videos.streamsClient.getManifest(
-            videoId,
+      if (isLive) {
+        final videoUrl =
+            await yt.videos.streams.getHttpLiveStreamUrl(VideoId(videoId));
+        final response = await get(Uri.parse(videoUrl));
+        String m3u8Content = response.body;
+
+        // Extract stream qualities
+        List<Map<String, String>> qualities = parseM3U8Content(m3u8Content);
+        for (var element in qualities) {
+          videosList.add(
+            VideoData(
+              url: element['url'] ?? "",
+              quality: element['resolution'].toString().split("x").last,
+            ),
           );
-      if (videoinfo.muxed.isNotEmpty) {
-        final video = VideoData(
-          url: videoinfo.muxed.first.url.toString(),
-          quality: videoinfo.muxed.first.qualityLabel,
-          format: 'mp4',
-          size: '${videoinfo.muxed.first.size.totalMegaBytes} MB',
-        );
-        videosList.add(video);
+        }
+      } else {
+        final videoinfo = await yt.videos.streams.getManifest(videoId);
+
+        if (videoinfo.muxed.isNotEmpty) {
+          final video = VideoData(
+            url: videoinfo.muxed.first.url.toString(),
+            quality: videoinfo.muxed.first.qualityLabel,
+            format: 'mp4',
+            size: '${videoinfo.muxed.first.size.totalMegaBytes} MB',
+          );
+          videosList.add(video);
+        }
       }
     } catch (e) {
       rethrow;
@@ -57,7 +76,6 @@ class FlexYoutubeController extends GetxController {
             .where((e) => e['quality'] != 360)
             .toList()
             .map((e) => e['quality'].toString()));
-        log(qualities.toString());
         final key = jsonDecode(response.body)['data']['key'];
         if (qualities.isNotEmpty) {
           for (var element in qualities) {
@@ -82,111 +100,16 @@ class FlexYoutubeController extends GetxController {
     } catch (e) {
       log("Error $e");
     }
-
-    // try {
-    //   final response = await post(
-    //     Uri.parse(
-    //       "https://yt5s.biz/mates/en/analyze/ajax?retry=undefined&platform=youtube",
-    //     ),
-    //     body: {
-    //       'url': 'https://www.youtube.com/watch?v=$videoId',
-    //       'ajax': '1',
-    //       'lang': 'en',
-    //     },
-    //   );
-    //   final html = cleanHtmlString(jsonDecode(response.body)['result']);
-    //   final parsed = parse('''
-    //                     <html>
-    //                       <body>
-    //                         $html
-    //                       </body>
-    //                     </html>
-    //                 ''');
-
-    //   var rows = parsed.getElementsByTagName('tr').where((element) {
-    //     return element.getElementsByTagName('td').length >= 3 &&
-    //         element.getElementsByTagName('td').first.text.trim() != 'MP3';
-    //   });
-    //   for (var row in rows) {
-    //     var cells = row.getElementsByTagName('td');
-    //     if (cells.isNotEmpty) {
-    //       var quality = cells[0].text.trim();
-    //       var format = cells[2].text.trim();
-    //       var size = cells[1].text.trim();
-    //       var linkElement = cells[2].querySelector('a');
-    //       var buttonElement = cells[2].querySelector('button');
-    //       var downloadUrl = linkElement?.attributes['href'] ??
-    //           buttonElement?.attributes['onclick'];
-    //       log("Download URL: $downloadUrl");
-    //       if (downloadUrl != null) {
-    //         if (downloadUrl.contains("download(")) {
-    //           downloadUrl = await getDownloadUrl(
-    //             ext: downloadUrl.split(",")[3],
-    //             format: downloadUrl.split(",").last,
-    //             id: videoId,
-    //             note: downloadUrl.split(",")[5],
-    //             title: downloadUrl.split(",")[1],
-    //             url: "https://www.youtube.com/watch?v=$videoId",
-    //           );
-    //           videosList.add(
-    //             VideoData(
-    //               url: downloadUrl ?? '',
-    //               quality: quality
-    //                   .replaceAll("(", "")
-    //                   .replaceAll(")", "")
-    //                   .replaceAll(".mp4", "")
-    //                   .trim(),
-    //               format: format,
-    //               size: size,
-    //             ),
-    //           );
-    //         }
-    //       }
-    //     }
-    //   }
-    //   videosList.removeWhere((element) => element.url == '');
-    //   sortByQuality();
-    // } catch (e) {
-    //   log("Error: $e");
-    //   throw Exception(e);
-    // }
   }
 
   Future<String?> getDownloadUrl({
-    // required String note,
     required String url,
-    // required String ext,
-    // required String format,
-    // required String id,
-    // required String title,
   }) async {
     try {
-      log("Url $url");
       final response = await get(Uri.parse(url));
-      // final data = {
-      //   'url': url,
-      //   'ext': ext.replaceAll("'", ""),
-      //   'format': format.replaceAll(")", "").replaceAll("'", ""),
-      //   'id': id,
-      //   'title': title.replaceAll("'", ""),
-      //   'note': note.split("(").first.trim().replaceAll("'", ""),
-      //   'platform': "youtube",
-      // };
-      // final response = await post(
-      //   Uri.parse(
-      //     "https://sss.instasaverpro.com/mates/en/convert?id=$id",
-      //   ),
-      //   headers: {
-      //     'Content-Type': 'application/x-www-form-urlencoded',
-      //   },
-      //   body: data,
-      // );
-      // log(response.body);
       final parsed = jsonDecode(response.body);
-      log(parsed['data']['downloadUrl']);
       return parsed['data']['downloadUrl'];
     } catch (e) {
-      log("Error in getting downloadurl $e");
       return null;
     }
   }
@@ -199,17 +122,56 @@ class FlexYoutubeController extends GetxController {
   }
 }
 
+List<Map<String, String>> parseM3U8Content(String m3u8Content) {
+  List<Map<String, String>> qualities = [];
+  List<String> lines = m3u8Content.split('\n');
+
+  String? resolution;
+  String? bandwidth;
+  String? url;
+
+  for (String line in lines) {
+    if (line.startsWith('#EXT-X-STREAM-INF')) {
+      // Extract bandwidth and resolution
+      RegExp bandwidthExp = RegExp(r'BANDWIDTH=(\d+)');
+      RegExp resolutionExp = RegExp(r'RESOLUTION=(\d+x\d+)');
+
+      bandwidth = bandwidthExp.firstMatch(line)?.group(1);
+      resolution = resolutionExp.firstMatch(line)?.group(1);
+    } else if (line.endsWith('.m3u8')) {
+      // This line should be the URL to the specific stream
+      url = line;
+
+      if (bandwidth != null && resolution != null) {
+        qualities.add({
+          'resolution': resolution,
+          'bandwidth': bandwidth,
+          'url': url,
+        });
+
+        // Reset variables
+        resolution = null;
+        bandwidth = null;
+        url = null;
+      }
+    }
+  }
+  return qualities;
+}
+
 class VideoData {
   final String url;
   final String quality;
   final String format;
   final String size;
+  final bool isLive;
 
   VideoData({
     required this.url,
     required this.quality,
-    required this.format,
-    required this.size,
+    this.format = "",
+    this.size = "",
+    this.isLive = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -218,6 +180,7 @@ class VideoData {
       'quality': quality,
       'format': format,
       'size': size,
+      'isLive': isLive,
     };
   }
 
@@ -227,6 +190,7 @@ class VideoData {
       quality: map['quality'],
       format: map['format'],
       size: map['size'],
+      isLive: map['isLive'],
     );
   }
 }
