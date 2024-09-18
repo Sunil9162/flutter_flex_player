@@ -20,16 +20,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _controller = FlutterFlexPlayerController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.load(
-        NetworkFlexPlayerSource(
-          // 'https://live-par-2-abr.livepush.io/vod/bigbuckbunnyclip.mp4',
-          // "https://videos.pexels.com/video-files/4115454/4115454-uhd_2560_1440_30fps.mp4",
-          // "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4",
-          "https://moctobpltc-i.akamaihd.net/hls/live/571329/eight/playlist.m3u8",
-        ),
+        // NetworkFlexPlayerSource(
+        //   // 'https://live-par-2-abr.livepush.io/vod/bigbuckbunnyclip.mp4',
+        //   // "https://videos.pexels.com/video-files/4115454/4115454-uhd_2560_1440_30fps.mp4",
+        //   // "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4",
+        //   "https://moctobpltc-i.akamaihd.net/hls/live/571329/eight/playlist.m3u8",
+        // ),
         // YouTubeFlexPlayerSource(
         //   "Nq2wYlWFucg",
         //   isLive: true,
         // ),
+        PlayerSources.youtube(videoId: "Nq2wYlWFucg"),
         autoPlay: false,
         loop: true,
       );

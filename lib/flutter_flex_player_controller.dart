@@ -247,7 +247,7 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
       } else if (source is YouTubeFlexPlayerSource) {
         final videoId = source.videoId;
         final flexYoutubecontroller = FlexYoutubeController.instance;
-        await flexYoutubecontroller.getInitialUrl(videoId, isLive: true).then(
+        await flexYoutubecontroller.getInitialUrl(videoId).then(
           (value) {
             qualities.value = flexYoutubecontroller.videosList
                 .map((e) => e.quality)

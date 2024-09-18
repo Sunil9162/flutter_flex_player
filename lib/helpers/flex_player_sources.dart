@@ -23,11 +23,31 @@ class FileFlexPlayerSource extends FlexPlayerSource {
 class YouTubeFlexPlayerSource extends FlexPlayerSource {
   /// The YouTube video ID to play.
   final String videoId;
-  final bool isLive;
-  final bool useIframe;
   YouTubeFlexPlayerSource(
-    this.videoId, {
-    this.isLive = false,
-    this.useIframe = false,
-  });
+    this.videoId,
+  );
+}
+
+class PlayerSources {
+  static FlexPlayerSource youtube({
+    required String videoId,
+    // bool useIframe = false,
+  }) {
+    return YouTubeFlexPlayerSource(
+      videoId,
+      // useIframe: useIframe,
+    );
+  }
+
+  static FlexPlayerSource network(String url) {
+    return NetworkFlexPlayerSource(url);
+  }
+
+  static FlexPlayerSource asset(String asset) {
+    return AssetFlexPlayerSource(asset);
+  }
+
+  static FlexPlayerSource file(File file) {
+    return FileFlexPlayerSource(file);
+  }
 }

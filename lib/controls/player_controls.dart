@@ -23,7 +23,7 @@ class _PlayerControlsState extends State<PlayerControls> {
   @override
   void initState() {
     super.initState();
-    playerController.initPlayer(widget.controller);
+    playerController.initPlayerControls(widget.controller);
   }
 
   @override
@@ -216,7 +216,7 @@ class _PlayerControlsState extends State<PlayerControls> {
           ),
           (context.width * 0.1).widthBox,
           StreamBuilder<InitializationEvent>(
-            stream: playerController.player.onInitialized,
+            stream: widget.controller.onInitialized,
             builder: (context, initalization) {
               return IgnorePointer(
                 ignoring:

@@ -3,7 +3,8 @@ library flutter_flex_player;
 import 'package:flutter/material.dart';
 import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
 import 'package:flutter_flex_player/helpers/configuration.dart';
-import 'package:flutter_flex_player/pages/full_screen_page.dart';
+import 'package:flutter_flex_player/pages/player_builder.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 // FlutterFlexPlayer is a class that will be used to create a FlutterFlexPlayer widget.
 class FlutterFlexPlayer extends StatefulWidget {
@@ -32,6 +33,7 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
     _controller = widget.controller;
     configuration = _controller.configuration;
     if (mounted) {
+      WakelockPlus.enable();
       setState(() {
         configuration = configuration.copyWith(
           aspectRatio: widget.aspectRatio,
@@ -46,6 +48,7 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
     if (configuration.autoDispose) {
       _controller.dispose();
     }
+    WakelockPlus.disable();
     super.dispose();
   }
 

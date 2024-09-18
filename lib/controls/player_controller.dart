@@ -25,7 +25,7 @@ class PlayerController extends GetxController with GetTickerProviderStateMixin {
   Timer? _timer;
   RxBool isControlsVisible = true.obs;
 
-  initPlayer(FlutterFlexPlayerController controller) {
+  initPlayerControls(FlutterFlexPlayerController controller) {
     _controller = controller;
     _animationController = AnimationController(
       vsync: this,
