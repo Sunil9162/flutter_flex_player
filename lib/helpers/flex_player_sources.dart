@@ -31,11 +31,9 @@ class YouTubeFlexPlayerSource extends FlexPlayerSource {
 class PlayerSources {
   static FlexPlayerSource youtube({
     required String videoId,
-    // bool useIframe = false,
   }) {
     return YouTubeFlexPlayerSource(
       videoId,
-      // useIframe: useIframe,
     );
   }
 

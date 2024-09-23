@@ -1,6 +1,3 @@
-import 'dart:convert';
-import 'dart:developer';
-
 import 'package:get/get.dart';
 import 'package:http/http.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
@@ -24,7 +21,7 @@ class FlexYoutubeController extends GetxController {
     return cleaned;
   }
 
-  Future<void> getInitialUrl(String videoId) async {
+  Future<void> getVideoDetails(String videoId) async {
     try {
       videosList.clear();
       final video = await yt.videos.get(VideoId(videoId));
@@ -33,7 +30,6 @@ class FlexYoutubeController extends GetxController {
             await yt.videos.streams.getHttpLiveStreamUrl(VideoId(videoId));
         final response = await get(Uri.parse(videoUrl));
         String m3u8Content = response.body;
-
         // Extract stream qualities
         List<Map<String, String>> qualities = parseM3U8Content(m3u8Content);
         for (var element in qualities) {
@@ -47,71 +43,21 @@ class FlexYoutubeController extends GetxController {
       } else {
         final videoinfo = await yt.videos.streams.getManifest(videoId);
 
-        if (videoinfo.muxed.isNotEmpty) {
-          final video = VideoData(
-            url: videoinfo.muxed.first.url.toString(),
-            quality: videoinfo.muxed.first.qualityLabel,
-            format: 'mp4',
-            size: '${videoinfo.muxed.first.size.totalMegaBytes} MB',
-          );
-          videosList.add(video);
+        if (videoinfo.videoOnly.isNotEmpty) {
+          for (var element in videoinfo.videoOnly) {
+            final video = VideoData(
+              url: element.url.toString(),
+              quality: element.videoQualityLabel.toString(),
+              format: element.container.name.toString(),
+              audioUrl: videoinfo.audio.first.url.toString(),
+            );
+            videosList.add(video);
+          }
         }
       }
+      sortByQuality();
     } catch (e) {
       rethrow;
-    }
-  }
-
-  Future<void> getVideoInfo(String videoId) async {
-    try {
-      final response = await get(
-        Uri.parse(
-          "https://cdn34.savetube.me/info?url=https://www.youtube.com/watch?v=$videoId",
-        ),
-      );
-      if (response.statusCode == 200) {
-        List<String> qualities = [];
-        List formats =
-            (jsonDecode(response.body)['data']['video_formats'] as List);
-        qualities.addAll(formats
-            .where((e) => e['quality'] != 360)
-            .toList()
-            .map((e) => e['quality'].toString()));
-        final key = jsonDecode(response.body)['data']['key'];
-        if (qualities.isNotEmpty) {
-          for (var element in qualities) {
-            final url = await getDownloadUrl(
-              url: "https://cdn35.savetube.me/download/video/$element/$key",
-            );
-            if (url != null) {
-              videosList.add(
-                VideoData(
-                  url: url,
-                  quality: "${element}p",
-                  format: "mp4",
-                  size: "0",
-                ),
-              );
-            }
-          }
-          videosList.refresh();
-        }
-        sortByQuality();
-      }
-    } catch (e) {
-      log("Error $e");
-    }
-  }
-
-  Future<String?> getDownloadUrl({
-    required String url,
-  }) async {
-    try {
-      final response = await get(Uri.parse(url));
-      final parsed = jsonDecode(response.body);
-      return parsed['data']['downloadUrl'];
-    } catch (e) {
-      return null;
     }
   }
 
@@ -120,6 +66,11 @@ class FlexYoutubeController extends GetxController {
       return int.parse(a.quality.split("p").first) -
           int.parse(b.quality.split("p").first);
     });
+  }
+
+  Future<bool> isNotLive(String videoId) async {
+    final video = await yt.videos.get(VideoId(videoId));
+    return !video.isLive;
   }
 }
 
@@ -164,14 +115,14 @@ class VideoData {
   final String url;
   final String quality;
   final String format;
-  final String size;
+  final String audioUrl;
   final bool isLive;
 
   VideoData({
     required this.url,
     required this.quality,
     this.format = "",
-    this.size = "",
+    this.audioUrl = "",
     this.isLive = false,
   });
 
@@ -180,7 +131,7 @@ class VideoData {
       'url': url,
       'quality': quality,
       'format': format,
-      'size': size,
+      'audioUrl': audioUrl,
       'isLive': isLive,
     };
   }
@@ -190,7 +141,7 @@ class VideoData {
       url: map['url'],
       quality: map['quality'],
       format: map['format'],
-      size: map['size'],
+      audioUrl: map['audioUrl'],
       isLive: map['isLive'],
     );
   }

@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_flex_player/controls/player_controller.dart';
 import 'package:flutter_flex_player/controls/player_controls.dart';
@@ -49,7 +51,8 @@ class _PlayerBuilderState extends State<PlayerBuilder>
     return PopScope(
       canPop: !widget._controller.isFullScreen,
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop) {
+        log('didPop: $didPop, result: $result');
+        if (widget._controller.isFullScreen) {
           widget._controller.exitFullScreen(context);
         }
       },
@@ -57,16 +60,24 @@ class _PlayerBuilderState extends State<PlayerBuilder>
         alignment: Alignment.center,
         children: [
           const SizedBox.expand(),
-          StreamBuilder<InitializationEvent>(
-            stream: widget._controller.onInitialized,
-            builder: (context, snapshot) {
-              return AspectRatio(
-                aspectRatio: widget.configuration.aspectRatio,
-                child: widget._controller.isInitialized
-                    ? VideoPlayer(widget._controller.videoPlayerController)
-                    : const SizedBox(),
-              );
-            },
+          Hero(
+            tag: 'player',
+            child: StreamBuilder<InitializationEvent>(
+              stream: widget._controller.onInitialized,
+              builder: (context, snapshot) {
+                return AspectRatio(
+                  aspectRatio: widget.configuration.aspectRatio,
+                  child: widget._controller.isInitialized &&
+                          widget._controller.isNativePlayer.value == false
+                      ? VideoPlayer(widget._controller.videoPlayerController)
+                      : widget._controller.isInitialized &&
+                              widget._controller.isNativePlayer.value
+                          ? widget._controller.nativePlayerController?.channel
+                              .playerView
+                          : const SizedBox(),
+                );
+              },
+            ),
           ),
           if (widget.configuration.controlsVisible)
             Positioned.fill(
