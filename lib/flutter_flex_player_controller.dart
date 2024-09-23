@@ -6,8 +6,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_flex_player/controllers/NativePlayer/native_player_controller.dart';
+import 'package:flutter_flex_player/controllers/NativePlayer/native_player_view.dart';
 import 'package:flutter_flex_player/helpers/extensions.dart';
 import 'package:flutter_flex_player/helpers/flex_player_sources.dart';
+import 'package:flutter_flex_player/pages/player_builder.dart';
 import 'package:get/state_manager.dart';
 import 'package:http/http.dart';
 import 'package:video_player/video_player.dart';
@@ -202,6 +204,8 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
 
   NativePlayerController? _nativePlayerController;
   NativePlayerController? get nativePlayerController => _nativePlayerController;
+
+  final nativePlayer = const NativePlayerView();
 
   /// Load the video player with the given [source].
   @override
@@ -447,6 +451,8 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   bool get isFullScreen => _isFullScreen;
 
   FlexPlayerConfiguration configuration = FlexPlayerConfiguration();
+
+  late PlayerBuilder playerBuilder;
 
   @override
   void enterFullScreen(BuildContext context) async {

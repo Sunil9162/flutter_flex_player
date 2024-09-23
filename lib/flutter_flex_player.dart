@@ -32,6 +32,10 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
     super.initState();
     _controller = widget.controller;
     configuration = _controller.configuration;
+    _controller.playerBuilder = PlayerBuilder(
+      controller: _controller,
+      configuration: configuration,
+    );
     if (mounted) {
       WakelockPlus.enable();
       setState(() {
@@ -58,10 +62,7 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
       aspectRatio: configuration.aspectRatio,
       child: ColoredBox(
         color: Colors.black,
-        child: PlayerBuilder(
-          controller: _controller,
-          configuration: configuration,
-        ),
+        child: _controller.playerBuilder,
       ),
     );
   }

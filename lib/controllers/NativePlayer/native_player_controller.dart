@@ -2,7 +2,7 @@ library flutter_flex_player;
 
 import 'dart:developer';
 
-import 'package:flutter/services.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_flex_player/controllers/NativePlayer/native_player_channel.dart';
 import 'package:flutter_flex_player/controllers/youtube_controller.dart';
 import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
@@ -119,26 +119,6 @@ class NativePlayerController {
   double playbackSpeed = 1.0;
   Duration? position;
   VoidCallback? onInitialized;
-
-  // void load({
-  //   required List<VideoData> videoData,
-  //   required bool autoPlay,
-  //   required bool loop,
-  //   required bool mute,
-  //   required double volume,
-  //   required double playbackSpeed,
-  //   Duration? position,
-  //   VoidCallback? onInitialized,
-  // }) {
-  //   this.videoData = videoData;
-  //   this.autoPlay = autoPlay;
-  //   this.loop = loop;
-  //   this.volume = volume;
-  //   this.mute = mute;
-  //   this.playbackSpeed = playbackSpeed;
-  //   this.position = position;
-  //   this.onInitialized = onInitialized;
-  // }
 
   void reload() {
     channel.reload();

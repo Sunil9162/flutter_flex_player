@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_flex_player/helpers/configuration.dart';
-import 'package:flutter_flex_player/pages/player_builder.dart';
 
 import '../flutter_flex_player_controller.dart';
 
@@ -33,10 +32,7 @@ class _FullScreenViewState extends State<FullScreenView> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Center(
-        child: PlayerBuilder(
-          controller: _controller,
-          configuration: widget.configuration,
-        ),
+        child: _controller.playerBuilder,
       ),
     );
   }

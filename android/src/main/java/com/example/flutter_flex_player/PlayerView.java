@@ -2,6 +2,8 @@ package com.example.flutter_flex_player;
 
 import android.content.Context;
 import android.net.Uri;
+import android.view.SurfaceView;
+import android.view.TextureView;
 import android.view.View;
 
 import androidx.annotation.NonNull;
@@ -24,6 +26,7 @@ import io.flutter.plugin.platform.PlatformView;
 import android.os.Handler;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import com.google.gson.Gson;
 
@@ -42,6 +45,7 @@ public class PlayerView  implements PlatformView, MethodChannel.MethodCallHandle
     public  PlayerView(Context context, BinaryMessenger messenger){
         this.context = context;
         layout = new LinearLayout(context);
+        layout.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         handler = new Handler();
         MethodChannel methodChannel = new MethodChannel(messenger, "com.sunilflutter.ytPlayer");
         methodChannel.setMethodCallHandler(this);
@@ -164,10 +168,26 @@ public class PlayerView  implements PlatformView, MethodChannel.MethodCallHandle
         }
     }
 
+    @OptIn(markerClass = UnstableApi.class)
     private void initializePlayer(){
         playerView = new androidx.media3.ui.PlayerView(context);
         playerView.setPlayer(player);
         layout.addView(playerView);
+        if (playerView.getVideoSurfaceView() instanceof SurfaceView) {
+            SurfaceView surfaceView = (SurfaceView) playerView.getVideoSurfaceView();
+            ViewGroup parent = (ViewGroup) surfaceView.getParent();
+            int index = parent.indexOfChild(surfaceView);
+
+            // Remove the SurfaceView from PlayerView
+            parent.removeView(surfaceView);
+
+            // Add a TextureView instead
+            TextureView textureView = new TextureView(context);
+            parent.addView(textureView, index);
+
+            // Set the TextureView for the player
+            player.setVideoTextureView(textureView);
+        }
         playerView.setUseController(false);
         String audioUrl = videoData.get(0).getAudioUrl();
         String videoUrl = videoData.get(0).getVideoUrl();
