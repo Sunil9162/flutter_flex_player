@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_flex_player/controllers/NativePlayer/native_player_view.dart';
 import 'package:flutter_flex_player/controls/player_controller.dart';
 import 'package:flutter_flex_player/controls/player_controls.dart';
 import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
@@ -70,10 +71,8 @@ class _PlayerBuilderState extends State<PlayerBuilder>
                   child: widget._controller.isInitialized &&
                           widget._controller.isNativePlayer.value == false
                       ? VideoPlayer(widget._controller.videoPlayerController)
-                      : widget._controller.isInitialized &&
-                              widget._controller.isNativePlayer.value
-                          ? widget._controller.nativePlayerController?.channel
-                              .playerView
+                      : widget._controller.isNativePlayer.value
+                          ? const NativePlayerView()
                           : const SizedBox(),
                 );
               },

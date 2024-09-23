@@ -221,28 +221,27 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
       final isNotLive =
           await FlexYoutubeController.instance.isNotLive(source.videoId);
       if (isNotLive) {
-        isNativePlayer.value = true;
+        _nativePlayerController = NativePlayerController.instance;
         final flexYoutubecontroller = FlexYoutubeController.instance;
-        await flexYoutubecontroller.getVideoDetails(source.videoId).then(
-          (value) {
-            qualities.value = flexYoutubecontroller.videosList
-                .map((e) => e.quality)
-                .toSet()
-                .toList();
-            selectedQuality = flexYoutubecontroller.videosList.first.quality;
-            _nativePlayerController = NativePlayerController();
-            _nativePlayerController!.load(
-              videoData: flexYoutubecontroller.videosList,
-              autoPlay: autoPlay,
-              loop: loop,
-              mute: mute,
-              volume: volume,
-              playbackSpeed: playbackSpeed,
-              position: position,
-              onInitialized: onInitialized,
-            );
-          },
-        );
+        await flexYoutubecontroller
+            .getVideoDetails(source.videoId)
+            .then((value) {
+          qualities.value = flexYoutubecontroller.videosList
+              .map((e) => e.quality)
+              .toSet()
+              .toList();
+          selectedQuality = flexYoutubecontroller.videosList.first.quality;
+          _nativePlayerController!.videoData = flexYoutubecontroller.videosList;
+          _nativePlayerController!.autoPlay = autoPlay;
+          _nativePlayerController!.loop = loop;
+          _nativePlayerController!.mute = mute;
+          _nativePlayerController!.volume = volume;
+          _nativePlayerController!.playbackSpeed = playbackSpeed;
+          _nativePlayerController!.position = position;
+          _nativePlayerController!.onInitialized = onInitialized;
+          isNativePlayer.value = true;
+        });
+        _initializationstream.add(InitializationEvent.initialized);
         return;
       }
     }
@@ -305,18 +304,14 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
       }
       await _videoPlayerController.initialize().then((_) async {
         _startListeners();
-        if (onInitialized != null) {
-          onInitialized();
-        }
+        onInitialized!();
         _videoPlayerController.setVolume(volume);
         _videoPlayerController.setPlaybackSpeed(playbackSpeed);
         _videoPlayerController.setLooping(loop);
         if (mute) {
           _videoPlayerController.setVolume(0);
         }
-        if (position != null) {
-          await _videoPlayerController.seekTo(position);
-        }
+        await _videoPlayerController.seekTo(position ?? Duration.zero);
         if (autoPlay) {
           _videoPlayerController.play();
         }
@@ -881,11 +876,11 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
 
   @override
   void setQuality(String quality) async {
-    _videoPlayerController.dispose();
     if (isNativePlayer.value) {
       _nativePlayerController!.chanegQuality(quality);
       return;
     }
+    _videoPlayerController.dispose();
     if (source is YouTubeFlexPlayerSource) {
       final flexYoutubecontroller = FlexYoutubeController.instance;
       final video = flexYoutubecontroller.videosList.firstWhere(

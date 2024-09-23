@@ -1,6 +1,14 @@
-part of 'native_player_controller.dart';
+library flutter_flex_player;
 
-class _NativePlayerChannel {
+import 'package:flutter/services.dart';
+import 'package:flutter_flex_player/controllers/NativePlayer/native_player_interface.dart';
+import 'package:flutter_flex_player/controllers/youtube_controller.dart';
+
+class NativePlayerChannel extends NativePlayerInterface {
+  static NativePlayerChannel get instance => NativePlayerChannel();
+  factory NativePlayerChannel() => NativePlayerChannel._();
+  NativePlayerChannel._();
+
   static const String _channelName = 'com.sunilflutter.ytPlayer';
   static const String _eventChannelName = 'com.sunilflutter.ytPlayer/events';
   static const String _methodPlay = 'play';
@@ -13,51 +21,22 @@ class _NativePlayerChannel {
 
   EventChannel get eventChannel => _eventChannel;
 
-  factory _NativePlayerChannel() => _NativePlayerChannel._();
-  _NativePlayerChannel._();
-
-  Widget get playerView {
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
-      return const UiKitView(
-        viewType: _channelName,
-        creationParamsCodec: StandardMessageCodec(),
-      );
-    }
-    return PlatformViewLink(
-      viewType: _channelName,
-      surfaceFactory: (context, controller) {
-        return AndroidViewSurface(
-          controller: controller as AndroidViewController,
-          gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
-          hitTestBehavior: PlatformViewHitTestBehavior.opaque,
-        );
-      },
-      onCreatePlatformView: (params) {
-        return PlatformViewsService.initSurfaceAndroidView(
-          id: params.id,
-          viewType: _channelName,
-          layoutDirection: TextDirection.ltr,
-          creationParams: params,
-          creationParamsCodec: const StandardMessageCodec(),
-        )
-          ..addOnPlatformViewCreatedListener(params.onPlatformViewCreated)
-          ..create();
-      },
-    );
-  }
-
+  @override
   Future<void> play() async {
     await _channel.invokeMethod(_methodPlay);
   }
 
+  @override
   Future<void> pause() async {
     await _channel.invokeMethod(_methodPause);
   }
 
+  @override
   Future<void> stop() async {
     await _channel.invokeMethod(_methodStop);
   }
 
+  @override
   Future<void> load({
     required List<VideoData> videoData,
     required bool autoPlay,
@@ -75,26 +54,31 @@ class _NativePlayerChannel {
       'mute': mute,
       'volume': volume,
       'playbackSpeed': playbackSpeed,
-      'position': position?.inMilliseconds,
+      'position': position?.inMilliseconds ?? 0,
     });
   }
 
+  @override
   void changequality(String quality) async {
     await _channel.invokeMethod('changequality', quality);
   }
 
+  @override
   void reload() async {
     await _channel.invokeMethod('reload');
   }
 
+  @override
   void setVolume(double volume) async {
     await _channel.invokeMethod('setVolume', volume);
   }
 
+  @override
   void setPlaybackSpeed(double speed) async {
     await _channel.invokeMethod('setPlaybackSpeed', speed);
   }
 
+  @override
   void seekTo(Duration position) async {
     await _channel.invokeMethod('seekTo', position.inMilliseconds);
   }

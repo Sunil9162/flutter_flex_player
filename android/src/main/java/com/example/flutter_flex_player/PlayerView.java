@@ -22,6 +22,7 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.platform.PlatformView;
 import android.os.Handler;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
 
 import com.google.gson.Gson;
@@ -74,66 +75,71 @@ public class PlayerView  implements PlatformView, MethodChannel.MethodCallHandle
 
     @Override
     public void onMethodCall(@NonNull MethodCall call, @NonNull MethodChannel.Result result) {
-       if(call.method.equals("load")){
-        Map<Object, Object> arguments = (Map<Object, Object>) call.arguments;
-        loadPlayer(arguments);
-       }
-       else if(call.method.equals("play")){
-           if (player != null){
-               player.play();
-           }
-           result.success(true);
-       } else if (call.method.equals("pause")) {
-            if (player != null) {
-                player.pause();
-            }
-            result.success(true);
-       } else if (call.method.equals("seekTo")) {
-            int position = (int) call.arguments;
-            if (player != null) {
-                player.seekTo(position);
-            }
-            result.success(true);
-        } else if (call.method.equals("setVolume")) {
-            double volume = (double) call.arguments;
-            if (player != null) {
-                player.setVolume((float) volume);
-            }
-            result.success(true);
-        } else if (call.method.equals("setPlaybackSpeed")) {
-            double playbackSpeed = (double) call.arguments;
-            if (player != null) {
-                player.setPlaybackSpeed((float) playbackSpeed);
-            }
-            result.success(true);
-        } else if (call.method.equals("changequality")) {
-            String quality = (String) call.arguments;
-             if (player != null){
-                 final  newVideo = videoData.stream().filter(video -> video.getQuality().equals(quality)).findFirst().orElse(null);
-                    if (newVideo != null){
-                        String audioUrl = newVideo.getAudioUrl();
-                        String videoUrl = newVideo.getVideoUrl();
-                        playWithAudioAndVideo(videoUrl,audioUrl);
+        switch (call.method) {
+            case "load":
+                Map<Object, Object> arguments = (Map<Object, Object>) call.arguments;
+                loadPlayer(arguments);
+                break;
+            case "play":
+                if (player != null) {
+                    player.play();
+                }
+                result.success(true);
+                break;
+            case "pause":
+                if (player != null) {
+                    player.pause();
+                }
+                result.success(true);
+                break;
+            case "seekTo":
+                int position = (int) call.arguments;
+                if (player != null) {
+                    player.seekTo(position);
+                }
+                result.success(true);
+                break;
+            case "setVolume":
+                double volume = (double) call.arguments;
+                if (player != null) {
+                    player.setVolume((float) volume);
+                }
+                result.success(true);
+                break;
+            case "setPlaybackSpeed":
+                double playbackSpeed = (double) call.arguments;
+                if (player != null) {
+                    player.setPlaybackSpeed((float) playbackSpeed);
+                }
+                result.success(true);
+                break;
+            case "changequality":
+                String quality = (String) call.arguments;
+                if (player != null) {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                        VideoData newVideo = videoData.stream().filter(video -> video.getQuality().equals(quality)).findFirst().orElse(null);
+                        if (newVideo != null) {
+                            String audioUrl = newVideo.getAudioUrl();
+                            String videoUrl = newVideo.getVideoUrl();
+                            playWithAudioAndVideo(videoUrl, audioUrl);
+                        }
                     }
-             }
-            result.success(true);
-        } else if (call.method.equals("setAutoPlay")) {
-            boolean autoPlay = (boolean) call.arguments;
-            if (player != null) {
-                player.setPlayWhenReady(autoPlay);
-            }
-            result.success(true);
-        } else if (call.method.equals("dispose")) {
-            if (player != null) {
-                player.release();
-            }
-            result.success(true);
+                }
+                result.success(true);
+                break;
+            case "dispose":
+                if (player != null) {
+                    player.release();
+                }
+                result.success(true);
 
-       }
+                break;
+        }
     }
 
-    private void loadPlayer(Map<Object, Object> arguments){
+    private void loadPlayer(@NonNull Map<Object, Object> arguments){
         try {
+            Log.d("PlayerView", "Loading player");
             this.videoData = new ArrayList<>();
             ArrayList<Map<Object, Object>> videoData = (ArrayList<Map<Object, Object>>) arguments.get("videoData");
             assert videoData != null;
@@ -152,7 +158,6 @@ public class PlayerView  implements PlatformView, MethodChannel.MethodCallHandle
             player.setVolume((float) volume);
             player.setPlaybackSpeed((float) playbackSpeed);
             player.seekTo(position);
-            playerView.setUseController(false);
             initializePlayer();
         } catch (Exception e){
             Log.e("PlayerView", "Error loading player: " + e.getMessage());
@@ -163,9 +168,11 @@ public class PlayerView  implements PlatformView, MethodChannel.MethodCallHandle
         playerView = new androidx.media3.ui.PlayerView(context);
         playerView.setPlayer(player);
         layout.addView(playerView);
+        playerView.setUseController(false);
         String audioUrl = videoData.get(0).getAudioUrl();
         String videoUrl = videoData.get(0).getVideoUrl();
         playWithAudioAndVideo(videoUrl,audioUrl);
+        Log.d("PlayerView", "Player initialized");
     }
 
     @OptIn(markerClass = UnstableApi.class)
@@ -196,5 +203,8 @@ public class PlayerView  implements PlatformView, MethodChannel.MethodCallHandle
         layout.removeAllViews();
         handler.removeCallbacksAndMessages(null);
         messenger = null;
+        if (player != null) {
+            player.release();
+        }
     }
 }

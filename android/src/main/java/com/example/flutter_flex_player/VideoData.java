@@ -31,11 +31,11 @@ public class VideoData {
     }
 
     public String toJson() {
-        return "{\"videoUrl\":\"" + videoUrl + "\",\"audioUrl\":\"" + audioUrl + "\"}";
+        return "{\"url\":\"" + videoUrl + "\",\"audioUrl\":\"" + audioUrl + "\"}";
     }
 
     public static VideoData fromJson(Map<Object, Object> map) {
-        String videoUrl = (String) map.get("videoUrl");
+        String videoUrl = (String) map.get("url");
         String audioUrl = (String) map.get("audioUrl");
         String quality = (String) map.get("quality");
         return new VideoData(videoUrl, audioUrl,quality);

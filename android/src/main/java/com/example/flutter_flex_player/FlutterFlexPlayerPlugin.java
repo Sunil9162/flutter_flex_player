@@ -16,7 +16,7 @@ public class FlutterFlexPlayerPlugin implements FlutterPlugin {
     binding
             .getPlatformViewRegistry()
             .registerViewFactory(
-                    "ivs_broadcaster", new PlayerViewFactory(binding.getBinaryMessenger()));
+                    "player", new PlayerViewFactory(binding.getBinaryMessenger()));
   }
 
   @Override

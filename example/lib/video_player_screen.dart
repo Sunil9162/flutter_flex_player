@@ -30,7 +30,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         //   "Nq2wYlWFucg",
         //   isLive: true,
         // ),
-        PlayerSources.youtube(videoId: "Nq2wYlWFucg"),
+        PlayerSources.youtube(videoId: "oEg2W4TQCH4"),
         autoPlay: false,
         loop: true,
       );
