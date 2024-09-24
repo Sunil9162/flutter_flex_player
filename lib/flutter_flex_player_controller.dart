@@ -4,43 +4,42 @@ library flutter_flex_player;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_flex_player/controllers/NativePlayer/native_player_controller.dart';
 import 'package:flutter_flex_player/controllers/NativePlayer/native_player_view.dart';
+import 'package:flutter_flex_player/flutter_flex_player_method_channel.dart';
 import 'package:flutter_flex_player/helpers/extensions.dart';
 import 'package:flutter_flex_player/helpers/flex_player_sources.dart';
 import 'package:flutter_flex_player/pages/player_builder.dart';
 import 'package:get/state_manager.dart';
 import 'package:http/http.dart';
-import 'package:video_player/video_player.dart';
 
 import 'controllers/youtube_controller.dart';
-import 'flutter_flex_player_abstract.dart';
 import 'helpers/configuration.dart';
 import 'helpers/enums.dart';
 import 'pages/full_screen_page.dart';
 
 export 'helpers/enums.dart';
 
-class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
-  factory FlutterFlexPlayerController() {
-    return _instance;
-  }
+class FlutterFlexPlayerController {
+  MethodChannelFlutterFlexPlayer channel = MethodChannelFlutterFlexPlayer();
+
   FlutterFlexPlayerController._internal();
 
+  // The static singleton instance
   static final FlutterFlexPlayerController _instance =
       FlutterFlexPlayerController._internal();
 
+  // Factory constructor to return the singleton instance
+  factory FlutterFlexPlayerController() {
+    return _instance;
+  }
+
+  // Static getter to access the singleton instance if needed
   static FlutterFlexPlayerController get instance => _instance;
-
-  late VideoPlayerController _videoPlayerController;
-
-  VideoPlayerController get videoPlayerController => _videoPlayerController;
 
   /// Returns whether the video player is initialized.
   bool get isInitialized {
     try {
-      return _videoPlayerController.value.isInitialized;
+      return true;
     } catch (e) {
       return false;
     }
@@ -58,12 +57,12 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   /// Returns the current position of the video player.
   Duration get position {
     if (isInitialized) {
-      return _videoPlayerController.value.position;
+      return Duration.zero;
     }
     return Duration.zero;
   }
 
-  Duration _previousPosition = Duration.zero;
+  final Duration _previousPosition = Duration.zero;
 
   /// Stream of [Duration] emitted when the video player position changes.
   /// The stream emits the current position of the video player.
@@ -77,7 +76,7 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   /// Returns the duration of the video player.
   Duration get duration {
     if (isInitialized) {
-      return _videoPlayerController.value.duration;
+      return Duration.zero;
     }
     return Duration.zero;
   }
@@ -92,7 +91,7 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   /// Buffer position of the video player.
   Duration get bufferedPosition {
     if (isInitialized) {
-      final buffered = _videoPlayerController.value.buffered;
+      final buffered = [];
       //  Convert the buffered position to a duration.
       if (buffered.isNotEmpty) {
         return buffered.last.end;
@@ -104,7 +103,7 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
   /// Returns whether the video player is playing.
   bool get isPlaying {
     if (isInitialized) {
-      return _videoPlayerController.value.isPlaying;
+      return true;
     }
     return false;
   }
@@ -119,36 +118,36 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
 
   /// Returns whether the video player is looping.
   bool get isLooping {
-    if (isInitialized) {
-      return _videoPlayerController.value.isLooping;
-    }
+    // if (isInitialized) {
+    //   return _videoPlayerController.value.isLooping;
+    // }
     return false;
   }
 
   /// Returns whether the video player is muted.
   bool get isMuted {
-    if (isInitialized) {
-      if (isNativePlayer.value) {
-        return _nativePlayerController!.isMuted;
-      }
-      return _videoPlayerController.value.volume == 0;
-    }
+    // if (isInitialized) {
+    //   if (isNativePlayer.value) {
+    //     return _nativePlayerController!.isMuted;
+    //   }
+    //   return _videoPlayerController.value.volume == 0;
+    // }
     return false;
   }
 
   /// Returns the volume of the video player.
   double get volume {
-    if (isInitialized) {
-      return _videoPlayerController.value.volume;
-    }
+    // if (isInitialized) {
+    //   return _videoPlayerController.value.volume;
+    // }
     return 0;
   }
 
   /// Returns the playback speed of the video player.
   double get playbackSpeed {
-    if (isInitialized) {
-      return _videoPlayerController.value.playbackSpeed;
-    }
+    // if (isInitialized) {
+    //   return _videoPlayerController.value.playbackSpeed;
+    // }
     return 0;
   }
 
@@ -163,52 +162,50 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
 
   void _startListeners() {
     _stopListeners();
-    _durationstream.add(_videoPlayerController.value.duration);
-    listner = () {
-      if (_videoPlayerController.value.hasError) {
-        _initializationstream.add(InitializationEvent.uninitialized);
-      }
-      if (_videoPlayerController.value.isInitialized) {
-        _initializationstream.add(InitializationEvent.initialized);
-        _positionstream.add(_videoPlayerController.value.position);
-        if (_videoPlayerController.value.hasError == false) {
-          _previousPosition = _videoPlayerController.value.position;
-        }
-        _updatePlayerState();
-        _playbackSpeedStream.add(_videoPlayerController.value.playbackSpeed);
-      }
-    };
-    _videoPlayerController.addListener(listner!);
+    // _durationstream.add(_videoPlayerController.value.duration);
+    // listner = () {
+    //   if (_videoPlayerController.value.hasError) {
+    //     _initializationstream.add(InitializationEvent.uninitialized);
+    //   }
+    //   if (_videoPlayerController.value.isInitialized) {
+    //     _initializationstream.add(InitializationEvent.initialized);
+    //     _positionstream.add(_videoPlayerController.value.position);
+    //     if (_videoPlayerController.value.hasError == false) {
+    //       _previousPosition = _videoPlayerController.value.position;
+    //     }
+    //     _updatePlayerState();
+    //     _playbackSpeedStream.add(_videoPlayerController.value.playbackSpeed);
+    //   }
+    // };
+    // _videoPlayerController.addListener(listner!);
   }
 
   void _stopListeners() {
-    if (listner != null) _videoPlayerController.removeListener(listner!);
+    // if (listner != null) _videoPlayerController.removeListener(listner!);
   }
 
   void _updatePlayerState() {
-    if (_videoPlayerController.value.isPlaying) {
-      _playerstatestream.add(PlayerState.playing);
-    } else if (_videoPlayerController.value.isBuffering) {
-      _playerstatestream.add(PlayerState.buffering);
-    } else if (_videoPlayerController.value.isCompleted) {
-      _playerstatestream.add(PlayerState.ended);
-    } else if (!isPlaying) {
-      _playerstatestream.add(PlayerState.paused);
-    }
+    // if (_videoPlayerController.value.isPlaying) {
+    //   _playerstatestream.add(PlayerState.playing);
+    // } else if (_videoPlayerController.value.isBuffering) {
+    //   _playerstatestream.add(PlayerState.buffering);
+    // } else if (_videoPlayerController.value.isCompleted) {
+    //   _playerstatestream.add(PlayerState.ended);
+    // } else if (!isPlaying) {
+    //   _playerstatestream.add(PlayerState.paused);
+    // }
   }
 
   RxList<VideoData> videosList = <VideoData>[].obs;
   FlexPlayerSource? _source;
   FlexPlayerSource? get source => _source;
-  RxBool isNativePlayer = false.obs;
 
-  NativePlayerController? _nativePlayerController;
-  NativePlayerController? get nativePlayerController => _nativePlayerController;
-
-  final nativePlayer = const NativePlayerView();
+  Rxn<NativePlayerView> nativePlayer = Rxn();
+  final key = GlobalKey();
+  Rxn<PlayerBuilder> playerBuilder = Rxn();
 
   /// Load the video player with the given [source].
-  @override
+
   void load(
     FlexPlayerSource source, {
     bool autoPlay = false,
@@ -219,13 +216,28 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
     Duration? position,
     VoidCallback? onInitialized,
   }) async {
+    configuration = configuration.copyWith(
+      autoPlay: autoPlay,
+      loop: loop,
+      volume: volume,
+      playbackSpeed: playbackSpeed,
+      position: position,
+      isPlaying: autoPlay,
+    );
+    nativePlayer.value = NativePlayerView(
+      flexPlayerController: this,
+    );
+    playerBuilder.value = PlayerBuilder(
+      controller: this,
+      configuration: configuration,
+      onFullScreeen: () {},
+    );
     _initializationstream.add(InitializationEvent.initializing);
-    isNativePlayer.value = false;
+
     if (source is YouTubeFlexPlayerSource) {
       final isNotLive =
           await FlexYoutubeController.instance.isNotLive(source.videoId);
       if (isNotLive) {
-        _nativePlayerController = NativePlayerController.instance;
         final flexYoutubecontroller = FlexYoutubeController.instance;
         await flexYoutubecontroller
             .getVideoDetails(source.videoId)
@@ -235,15 +247,14 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
               .toSet()
               .toList();
           selectedQuality = flexYoutubecontroller.videosList.first.quality;
-          _nativePlayerController!.videoData = flexYoutubecontroller.videosList;
-          _nativePlayerController!.autoPlay = autoPlay;
-          _nativePlayerController!.loop = loop;
-          _nativePlayerController!.mute = mute;
-          _nativePlayerController!.volume = volume;
-          _nativePlayerController!.playbackSpeed = playbackSpeed;
-          _nativePlayerController!.position = position;
-          _nativePlayerController!.onInitialized = onInitialized;
-          isNativePlayer.value = true;
+          channel.load(
+            videoData: flexYoutubecontroller.videosList,
+            autoPlay: autoPlay,
+            loop: loop,
+            mute: mute,
+            volume: volume,
+            playbackSpeed: playbackSpeed,
+          );
         });
         _initializationstream.add(InitializationEvent.initialized);
         return;
@@ -251,16 +262,9 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
     }
     try {
       _source = source;
-      configuration = configuration.copyWith(
-        autoPlay: autoPlay,
-        loop: loop,
-        volume: volume,
-        playbackSpeed: playbackSpeed,
-        position: position,
-        isPlaying: autoPlay,
-      );
+
       if (source is AssetFlexPlayerSource) {
-        _videoPlayerController = VideoPlayerController.asset(source.asset);
+        // _videoPlayerController = VideoPlayerController.asset(source.asset);
       } else if (source is NetworkFlexPlayerSource) {
         if (source.url.endsWith('.m3u8')) {
           final response = await get(Uri.parse(source.url));
@@ -283,12 +287,12 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
         }
         qualities.value = videosList.map((e) => e.quality).toSet().toList();
         qualities.sort((a, b) => a.compareTo(b));
-        _videoPlayerController = VideoPlayerController.networkUrl(
-          videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
-          Uri.parse(videosList.first.url),
-        );
+        // _videoPlayerController = VideoPlayerController.networkUrl(
+        //   videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+        //   Uri.parse(videosList.first.url),
+        // );
       } else if (source is FileFlexPlayerSource) {
-        _videoPlayerController = VideoPlayerController.file(source.file);
+        // _videoPlayerController = VideoPlayerController.file(source.file);
       } else if (source is YouTubeFlexPlayerSource) {
         final videoId = source.videoId;
         final flexYoutubecontroller = FlexYoutubeController.instance;
@@ -300,211 +304,141 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
                 .toList();
             final streamInfo = flexYoutubecontroller.videosList.first;
             selectedQuality = flexYoutubecontroller.videosList.first.quality;
-            _videoPlayerController = VideoPlayerController.networkUrl(
-              Uri.parse(streamInfo.url.toString()),
-            );
+            // _videoPlayerController = VideoPlayerController.networkUrl(
+            //   Uri.parse(streamInfo.url.toString()),
+            // );
           },
         );
       }
-      await _videoPlayerController.initialize().then((_) async {
-        _startListeners();
-        onInitialized!();
-        _videoPlayerController.setVolume(volume);
-        _videoPlayerController.setPlaybackSpeed(playbackSpeed);
-        _videoPlayerController.setLooping(loop);
-        if (mute) {
-          _videoPlayerController.setVolume(0);
-        }
-        await _videoPlayerController.seekTo(position ?? Duration.zero);
-        if (autoPlay) {
-          _videoPlayerController.play();
-        }
-      });
+      // await _videoPlayerController.initialize().then((_) async {
+      //   _startListeners();
+      //   onInitialized!();
+      //   _videoPlayerController.setVolume(volume);
+      //   _videoPlayerController.setPlaybackSpeed(playbackSpeed);
+      //   _videoPlayerController.setLooping(loop);
+      //   if (mute) {
+      //     _videoPlayerController.setVolume(0);
+      //   }
+      //   await _videoPlayerController.seekTo(position ?? Duration.zero);
+      //   if (autoPlay) {
+      //     _videoPlayerController.play();
+      //   }
+      // });
     } catch (e) {
       _initializationstream.add(InitializationEvent.uninitialized);
     }
   }
 
-  @override
   void reload() async {
     _initializationstream.add(InitializationEvent.initializing);
-    if (isNativePlayer.value) {
-      _nativePlayerController!.reload();
-      return;
-    }
     try {
-      await _videoPlayerController.initialize();
-      await _videoPlayerController.seekTo(_previousPosition);
-      _positionstream.add(_previousPosition);
-      _videoPlayerController.setPlaybackSpeed(configuration.playbackSpeed);
-      _videoPlayerController.setVolume(configuration.volume);
-      _videoPlayerController.setLooping(configuration.loop);
-      if (configuration.isPlaying) {
-        _videoPlayerController.play();
-      }
+      // await _videoPlayerController.initialize();
+      // await _videoPlayerController.seekTo(_previousPosition);
+      // _positionstream.add(_previousPosition);
+      // _videoPlayerController.setPlaybackSpeed(configuration.playbackSpeed);
+      // _videoPlayerController.setVolume(configuration.volume);
+      // _videoPlayerController.setLooping(configuration.loop);
+      // if (configuration.isPlaying) {
+      //   _videoPlayerController.play();
+      // }
       _startListeners();
     } catch (e) {
       _initializationstream.add(InitializationEvent.uninitialized);
     }
   }
 
-  @override
   void pause() {
     if (isInitialized) {
-      if (isNativePlayer.value) {
-        _nativePlayerController!.pause();
-        return;
-      }
-      _videoPlayerController.pause();
       configuration = configuration.copyWith(isPlaying: false);
     }
   }
 
-  @override
   void play() {
     if (isInitialized) {
-      if (isNativePlayer.value) {
-        _nativePlayerController!.play();
-        return;
-      }
-      _videoPlayerController.play();
       configuration = configuration.copyWith(isPlaying: true);
     }
   }
 
-  @override
   void seekTo(Duration position) async {
-    if (isInitialized) {
-      if (isNativePlayer.value) {
-        _nativePlayerController!.seekTo(position);
-        return;
-      }
-      await _videoPlayerController.seekTo(position);
-    }
+    if (isInitialized) {}
   }
 
-  @override
   void setLooping(bool looping) {
     if (isInitialized) {
-      _videoPlayerController.setLooping(looping);
       configuration = configuration.copyWith(loop: looping);
     }
   }
 
-  @override
   void setMute(bool mute) {
     if (isInitialized) {
-      _videoPlayerController.setVolume(mute ? 0 : 1);
       configuration = configuration.copyWith(volume: mute ? 0 : 1);
     }
   }
 
-  @override
   void setPlaybackSpeed(double speed) {
     if (isInitialized) {
-      if (isNativePlayer.value) {
-        _nativePlayerController!.setPlaybackSpeed(speed);
-        return;
-      }
-      _videoPlayerController.setPlaybackSpeed(speed);
       configuration = configuration.copyWith(playbackSpeed: speed);
     }
   }
 
-  @override
   void setVolume(double volume) {
     if (isInitialized) {
-      if (isNativePlayer.value) {
-        _nativePlayerController!.setVolume(volume);
-        return;
-      }
-      _videoPlayerController.setVolume(volume);
       configuration = configuration.copyWith(volume: volume);
     }
   }
 
-  @override
   void stop() {
     if (isInitialized) {
-      if (isNativePlayer.value) {
-        _nativePlayerController!.stop();
-        return;
-      }
-      _videoPlayerController.pause();
-      _videoPlayerController.seekTo(Duration.zero);
       _playerstatestream.add(PlayerState.stopped);
       configuration = configuration.copyWith(isPlaying: false);
     }
   }
 
-  @override
   void dispose() {
-    _videoPlayerController.dispose();
     _initializationstream.close();
     _positionstream.close();
     _durationstream.close();
     _playerstatestream.close();
     _stopListeners();
+    channel.dispose();
   }
 
-  bool _isFullScreen = false;
-  bool get isFullScreen => _isFullScreen;
+  RxBool isFullScreen = false.obs;
 
   FlexPlayerConfiguration configuration = FlexPlayerConfiguration();
 
-  late PlayerBuilder playerBuilder;
-
-  @override
   void enterFullScreen(BuildContext context) async {
-    _isFullScreen = true;
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeRight,
-      DeviceOrientation.landscapeLeft,
-    ]);
-    await SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.immersiveSticky,
-      overlays: [],
-    );
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Navigator.push(
-        context,
-        PageRouteBuilder<dynamic>(
-          pageBuilder: (BuildContext context, _, __) => FullScreenView(
-            controller: this,
-            configuration: configuration,
-          ),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 0.95, end: 1.0).animate(
-                  CurvedAnimation(
-                    parent: animation,
-                    curve: Curves.easeInOut,
-                  ),
-                ),
-                child: child,
-              ),
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 300),
-          reverseTransitionDuration: const Duration(milliseconds: 300),
+    isFullScreen.value = true;
+
+    Navigator.push(
+      context,
+      PageRouteBuilder<dynamic>(
+        pageBuilder: (BuildContext context, _, __) => FullScreenView(
+          controller: this,
+          configuration: configuration,
         ),
-      );
-    });
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+                CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeInOut,
+                ),
+              ),
+              child: child,
+            ),
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+      ),
+    );
   }
 
-  @override
   void exitFullScreen(BuildContext context) async {
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-    await SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: SystemUiOverlay.values,
-    );
-    _isFullScreen = false;
+    isFullScreen.value = false;
     Navigator.pop(context);
   }
 
@@ -880,22 +814,16 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
     }
   }
 
-  @override
   void setQuality(String quality) async {
-    if (isNativePlayer.value) {
-      _nativePlayerController!.chanegQuality(quality);
-      return;
-    }
-    _videoPlayerController.dispose();
     if (source is YouTubeFlexPlayerSource) {
       final flexYoutubecontroller = FlexYoutubeController.instance;
       final video = flexYoutubecontroller.videosList.firstWhere(
         (element) => element.quality == quality,
       );
       final url = video.url.toString();
-      _videoPlayerController = VideoPlayerController.networkUrl(
-        Uri.parse(url),
-      );
+      // _videoPlayerController = VideoPlayerController.networkUrl(
+      //   Uri.parse(url),
+      // );
       reload();
     }
     if (source is NetworkFlexPlayerSource) {
@@ -903,9 +831,9 @@ class FlutterFlexPlayerController extends FlutterFlexPlayerAbstract {
         (element) => element.quality == quality,
       );
       final url = video.url.toString();
-      _videoPlayerController = VideoPlayerController.networkUrl(
-        Uri.parse(url),
-      );
+      // _videoPlayerController = VideoPlayerController.networkUrl(
+      //   Uri.parse(url),
+      // );
       reload();
     }
   }

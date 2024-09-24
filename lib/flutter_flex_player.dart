@@ -11,12 +11,14 @@ class FlutterFlexPlayer extends StatefulWidget {
   final FlutterFlexPlayerController controller;
   final bool autoDispose;
   final double aspectRatio;
+  final VoidCallback? onFullScreeen;
 
   const FlutterFlexPlayer(
     this.controller, {
     super.key,
     this.autoDispose = true,
     this.aspectRatio = 16 / 9,
+    this.onFullScreeen,
   });
 
   @override
@@ -32,10 +34,7 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
     super.initState();
     _controller = widget.controller;
     configuration = _controller.configuration;
-    _controller.playerBuilder = PlayerBuilder(
-      controller: _controller,
-      configuration: configuration,
-    );
+
     if (mounted) {
       WakelockPlus.enable();
       setState(() {
@@ -58,11 +57,18 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: configuration.aspectRatio,
-      child: ColoredBox(
-        color: Colors.black,
-        child: _controller.playerBuilder,
+    return SizedBox(
+      width: MediaQuery.sizeOf(context).width,
+      child: AspectRatio(
+        aspectRatio: configuration.aspectRatio,
+        child: ColoredBox(
+          color: Colors.black,
+          child: PlayerBuilder(
+            controller: widget.controller,
+            configuration: configuration,
+            onFullScreeen: widget.onFullScreeen,
+          ),
+        ),
       ),
     );
   }

@@ -7,9 +7,11 @@ import 'package:flutter_flex_player/helpers/extensions.dart';
 class PlayerControls extends StatefulWidget {
   final FlutterFlexPlayerController controller;
   final ControlsStyle controlsStyle;
+  final Function onFullScreeen;
   const PlayerControls({
     super.key,
     required this.controller,
+    required this.onFullScreeen,
     this.controlsStyle = ControlsStyle.defaultStyle,
   });
 
@@ -132,6 +134,7 @@ class _PlayerControlsState extends State<PlayerControls> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
+            widget.onFullScreeen();
             playerController.toggleFullScreen(context);
           },
           child: Container(

@@ -17,7 +17,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = FlutterFlexPlayerController();
+    _controller = FlutterFlexPlayerController.instance;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.load(
         // NetworkFlexPlayerSource(

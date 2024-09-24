@@ -82,7 +82,7 @@ class PlayerController extends GetxController with GetTickerProviderStateMixin {
   }
 
   void toggleFullScreen(BuildContext context) {
-    if (player.isFullScreen) {
+    if (player.isFullScreen.value) {
       player.exitFullScreen(context);
     } else {
       player.enterFullScreen(context);

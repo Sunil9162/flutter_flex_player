@@ -20,6 +20,6 @@ public class PlayerViewFactory extends PlatformViewFactory {
     @NonNull
     @Override
     public PlatformView create(Context context, int id, Object o) {
-        return new PlayerView(context, messenger);
+        return new PlayerView(context, messenger,id);
     }
 }
