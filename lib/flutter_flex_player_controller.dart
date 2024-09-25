@@ -2,13 +2,13 @@
 library flutter_flex_player;
 
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_flex_player/controllers/NativePlayer/native_player_view.dart';
 import 'package:flutter_flex_player/flutter_flex_player_method_channel.dart';
 import 'package:flutter_flex_player/helpers/extensions.dart';
 import 'package:flutter_flex_player/helpers/flex_player_sources.dart';
-import 'package:flutter_flex_player/pages/player_builder.dart';
 import 'package:get/state_manager.dart';
 import 'package:http/http.dart';
 
@@ -22,7 +22,13 @@ export 'helpers/enums.dart';
 class FlutterFlexPlayerController {
   MethodChannelFlutterFlexPlayer channel = MethodChannelFlutterFlexPlayer();
 
-  FlutterFlexPlayerController._internal();
+  FlutterFlexPlayerController._internal() {
+    nativePlayer.value = RepaintBoundary(
+      child: NativePlayerView(
+        flexPlayerController: this,
+      ),
+    );
+  }
 
   // The static singleton instance
   static final FlutterFlexPlayerController _instance =
@@ -200,9 +206,8 @@ class FlutterFlexPlayerController {
   FlexPlayerSource? _source;
   FlexPlayerSource? get source => _source;
 
-  Rxn<NativePlayerView> nativePlayer = Rxn();
+  Rxn<Widget> nativePlayer = Rxn();
   final key = GlobalKey();
-  Rxn<PlayerBuilder> playerBuilder = Rxn();
 
   /// Load the video player with the given [source].
 
@@ -224,16 +229,7 @@ class FlutterFlexPlayerController {
       position: position,
       isPlaying: autoPlay,
     );
-    nativePlayer.value = NativePlayerView(
-      flexPlayerController: this,
-    );
-    playerBuilder.value = PlayerBuilder(
-      controller: this,
-      configuration: configuration,
-      onFullScreeen: () {},
-    );
     _initializationstream.add(InitializationEvent.initializing);
-
     if (source is YouTubeFlexPlayerSource) {
       final isNotLive =
           await FlexYoutubeController.instance.isNotLive(source.videoId);
@@ -247,6 +243,7 @@ class FlutterFlexPlayerController {
               .toSet()
               .toList();
           selectedQuality = flexYoutubecontroller.videosList.first.quality;
+          log("Videos Loaded: ${qualities.length}");
           channel.load(
             videoData: flexYoutubecontroller.videosList,
             autoPlay: autoPlay,
@@ -349,12 +346,14 @@ class FlutterFlexPlayerController {
   void pause() {
     if (isInitialized) {
       configuration = configuration.copyWith(isPlaying: false);
+      channel.pause();
     }
   }
 
   void play() {
     if (isInitialized) {
       configuration = configuration.copyWith(isPlaying: true);
+      channel.play();
     }
   }
 

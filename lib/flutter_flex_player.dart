@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
 import 'package:flutter_flex_player/helpers/configuration.dart';
 import 'package:flutter_flex_player/pages/player_builder.dart';
+import 'package:get/get.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 // FlutterFlexPlayer is a class that will be used to create a FlutterFlexPlayer widget.
@@ -63,11 +64,16 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
         aspectRatio: configuration.aspectRatio,
         child: ColoredBox(
           color: Colors.black,
-          child: PlayerBuilder(
-            controller: widget.controller,
-            configuration: configuration,
-            onFullScreeen: widget.onFullScreeen,
-          ),
+          child: Obx(() {
+            if (widget.controller.isFullScreen.value) {
+              return const SizedBox();
+            }
+            return PlayerBuilder(
+              controller: widget.controller,
+              configuration: configuration,
+              onFullScreeen: widget.onFullScreeen,
+            );
+          }),
         ),
       ),
     );

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_flex_player/helpers/configuration.dart';
 import 'package:flutter_flex_player/pages/player_builder.dart';
+import 'package:get/get.dart';
 
 import '../flutter_flex_player_controller.dart';
 
@@ -56,10 +57,15 @@ class _FullScreenViewState extends State<FullScreenView> {
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        body: PlayerBuilder(
-          controller: widget.controller,
-          configuration: widget.configuration,
-        ),
+        body: Obx(() {
+          if (widget.controller.isFullScreen.value == false) {
+            return const SizedBox();
+          }
+          return PlayerBuilder(
+            controller: widget.controller,
+            configuration: widget.configuration,
+          );
+        }),
       ),
     );
   }

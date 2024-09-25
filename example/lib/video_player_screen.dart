@@ -30,10 +30,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         //   "Nq2wYlWFucg",
         //   isLive: true,
         // ),
-        PlayerSources.network(
-            "https://live-par-2-abr.livepush.io/vod/bigbuckbunnyclip.mp4"),
-        // PlayerSources.youtube(videoId: "LTuh5Je3i1A"),
-        autoPlay: false,
+        // PlayerSources.network(
+        //     "https://live-par-2-abr.livepush.io/vod/bigbuckbunnyclip.mp4"),
+        PlayerSources.youtube(videoId: "e6OOEFN4gSQ"),
+        autoPlay: true,
         loop: true,
       );
       SystemChrome.setPreferredOrientations([

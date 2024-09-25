@@ -12,6 +12,7 @@ import io.flutter.plugin.platform.PlatformViewFactory;
 public class PlayerViewFactory extends PlatformViewFactory {
     private final BinaryMessenger messenger;
 
+
     public PlayerViewFactory(BinaryMessenger messenger) {
         super(StandardMessageCodec.INSTANCE);
         this.messenger = messenger;

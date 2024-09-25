@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:get/get.dart';
 import 'package:http/http.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
@@ -41,15 +43,15 @@ class FlexYoutubeController extends GetxController {
           );
         }
       } else {
-        final videoinfo = await yt.videos.streams.getManifest(videoId);
-
-        if (videoinfo.videoOnly.isNotEmpty) {
-          for (var element in videoinfo.videoOnly) {
+        final videoinfo = await getVideos(videoId);
+        if (videoinfo['videos']?.isNotEmpty ?? false) {
+          for (var element in videoinfo['videos']) {
             final video = VideoData(
-              url: element.url.toString(),
-              quality: element.videoQualityLabel.toString(),
-              format: element.container.name.toString(),
-              audioUrl: videoinfo.audio.first.url.toString(),
+              url: element['url'].toString(),
+              quality: element['height'].toString(),
+              format: element['ext'].toString(),
+              audioUrl:
+                  (videoinfo['audios'] as List).firstOrNull['url'].toString(),
             );
             videosList.add(video);
           }
@@ -58,6 +60,42 @@ class FlexYoutubeController extends GetxController {
       sortByQuality();
     } catch (e) {
       rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getVideos(String videoId) async {
+    try {
+      final response = await post(
+        Uri.parse('https://submagic-free-tools.fly.dev/api/youtube-info'),
+        body: {
+          "url": "https://www.youtube.com/watch?v=$videoId",
+        },
+      );
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        final allVideos = List<Map<String, dynamic>>.from(body['formats'])
+            .where((element) => element['type'] == "video_only")
+            .toList();
+        List<Map<String, dynamic>> videos = [];
+        for (var element in allVideos) {
+          final index = videos.indexWhere(
+            (vid) => vid['height'] == element['height'],
+          );
+          if (index == -1) {
+            videos.add(element);
+          }
+        }
+        final audios = List<Map<String, dynamic>>.from(body['formats'])
+            .where((element) => element['type'] == "audio")
+            .toList();
+        return {
+          "videos": videos,
+          "audios": audios,
+        };
+      }
+      throw Exception("Data not found");
+    } catch (e) {
+      return {};
     }
   }
 
