@@ -262,7 +262,6 @@ class FlutterFlexPlayerController {
     }
     try {
       _source = source;
-
       if (source is AssetFlexPlayerSource) {
         // _videoPlayerController = VideoPlayerController.asset(source.asset);
       } else if (source is NetworkFlexPlayerSource) {

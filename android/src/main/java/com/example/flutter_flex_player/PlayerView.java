@@ -86,6 +86,7 @@ package com.example.flutter_flex_player;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.Uri;
+import android.util.LongSparseArray;
 import android.view.SurfaceView;
 import android.view.TextureView;
 import android.view.View;
@@ -124,6 +125,8 @@ public class PlayerView implements PlatformView, MethodChannel.MethodCallHandler
     private final Handler handler;
     private EventChannel.EventSink messenger; 
     private VideoPlayerView videoPlayerView = null;
+    private androidx.media3.ui.PlayerView playerView;
+    private final LongSparseArray<androidx.media3.ui.PlayerView> videoPlayers = new LongSparseArray<>();
 
     @OptIn(markerClass = UnstableApi.class)
     @SuppressLint("SetTextI18n")
@@ -132,10 +135,11 @@ public class PlayerView implements PlatformView, MethodChannel.MethodCallHandler
         layout.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         this.videoPlayerView = VideoPlayerView.getInstance(context);
         layout.removeAllViews();
-        androidx.media3.ui.PlayerView playerView = new androidx.media3.ui.PlayerView(context);
+        playerView = new androidx.media3.ui.PlayerView(context);
+        videoPlayers.put(viewId, playerView);
         playerView.setPlayer(videoPlayerView.getPlayer());
         playerView.setUseController(false);
-        layout.addView(playerView);
+        layout.addView(videoPlayers.get(viewId));
         handler = new Handler();
         MethodChannel methodChannel = new MethodChannel(messenger, "flutter_flex_player_" + viewId);
         methodChannel.setMethodCallHandler(this);
