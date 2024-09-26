@@ -67,7 +67,7 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
                             if (player.getPlayWhenReady()) {
                                 map.put("state", "playing");  // Playing
                             } else {
-                                map.put("state", "paused");  // Paused
+                                    map.put("state", "paused");  // Paused
                             }
                             break;
                         case Player.STATE_ENDED:
@@ -92,7 +92,9 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
                 @Override
                 public void onIsPlayingChanged(boolean isPlaying) {
                     Map<Object, Object> map = new HashMap<>();
-                    map.put("state", isPlaying ? "playing" : "paused");
+                    if(player.getPlaybackState() != Player.STATE_BUFFERING) {
+                        map.put("state", isPlaying ? "playing" : "paused");
+                    }
                     sendMapData(map);
                 }
 

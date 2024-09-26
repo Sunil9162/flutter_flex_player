@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:example/video_player_screen.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatefulWidget {
@@ -17,21 +18,12 @@ class _HomePageState extends State<HomePage> {
         title: const Text('HomePage'),
       ),
       body: Center(
-        child: Column(
-          children: [
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: WidgetCache.getWidget('get_widhet'),
-            ),
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: WidgetCache.getWidget('get_widht'),
-            ),
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: WidgetCache.getWidget('get_widht'),
-            ),
-          ],
+        child: ElevatedButton(
+          onPressed: () {
+            Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const VideoPlayerScreen()));
+          },
+          child: const Text("Player Screen"),
         ),
       ),
     );

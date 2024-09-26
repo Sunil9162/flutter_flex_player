@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_flex_player/flutter_flex_player.dart';
 import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
-import 'package:flutter_flex_player/helpers/flex_player_sources.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   const VideoPlayerScreen({super.key});
@@ -17,7 +16,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = FlutterFlexPlayerController.instance;
+    _controller = FlutterFlexPlayerController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.load(
         // NetworkFlexPlayerSource(

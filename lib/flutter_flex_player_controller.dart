@@ -2,6 +2,7 @@
 library flutter_flex_player;
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import 'package:flutter_flex_player/helpers/extensions.dart';
 import 'package:flutter_flex_player/helpers/flex_player_sources.dart';
 import 'package:get/state_manager.dart';
 import 'package:http/http.dart';
+import 'package:rxdart/rxdart.dart';
 
 import 'controllers/youtube_controller.dart';
 import 'helpers/configuration.dart';
@@ -45,19 +47,25 @@ class FlutterFlexPlayerController {
 
   parseEvent(dynamic event) {
     log(event.toString());
-    final data = Map<String, dynamic>.from(event);
+    final data = Map<String, dynamic>.from(jsonDecode(event));
     if (data.containsKey('state')) {
-      _mapStateFromString(data['state']);
+      final state = _mapStateFromString(data['state']);
+      playerStateSink.add(state);
+      isPlaying = state == PlayerState.playing;
     }
     if (data.containsKey('duration') || data.containsKey("position")) {
-      final duration = Duration(milliseconds: int.parse(data['duration']));
-      final position = Duration(milliseconds: int.parse(data['position']));
+      final duration = Duration(milliseconds: data['duration']);
+      final position = Duration(milliseconds: data['position']);
       durationSink.add(duration);
+      this.duration = duration;
       positionSink.add(position);
     }
     if (data.containsKey('initializationEvent')) {
-      initializationSink
-          .add(_mapInitializationEventFromString(data['initializationEvent']));
+      final initalization =
+          _mapInitializationEventFromString(data['initializationEvent']);
+      log("Initalization State is : ${initalization.name}");
+      _initializationsink.add(initalization);
+      isInitialized = initalization == InitializationEvent.initialized;
     }
   }
 
@@ -110,11 +118,11 @@ class FlutterFlexPlayerController {
 
   /// Stream of [InitializationEvent] emitted when the video player is initialized.
   /// The stream emits whether the video player is initialized.
-  final StreamController<InitializationEvent> _initializationstream =
-      StreamController<InitializationEvent>.broadcast();
-  StreamSink<InitializationEvent> get initializationSink =>
-      _initializationstream.sink;
+  final BehaviorSubject<InitializationEvent> _initializationstream =
+      BehaviorSubject<InitializationEvent>();
 
+  StreamSink<InitializationEvent> get _initializationsink =>
+      _initializationstream.sink;
   Stream<InitializationEvent> get onInitialized => _initializationstream.stream;
 
   /// Returns the current position of the video player.
@@ -129,25 +137,18 @@ class FlutterFlexPlayerController {
 
   /// Stream of [Duration] emitted when the video player position changes.
   /// The stream emits the current position of the video player.
-  final StreamController<Duration> _positionstream =
-      StreamController<Duration>.broadcast();
+  final BehaviorSubject<Duration> _positionstream = BehaviorSubject<Duration>();
 
   StreamSink<Duration> get positionSink => _positionstream.sink;
 
   Stream<Duration> get onPositionChanged => _positionstream.stream;
 
   /// Returns the duration of the video player.
-  Duration get duration {
-    if (isInitialized) {
-      return Duration.zero;
-    }
-    return Duration.zero;
-  }
+  Duration duration = Duration.zero;
 
   /// Stream of [Duration] emitted when the video player duration changes.
   /// The stream emits the duration of the video player.
-  final StreamController<Duration> _durationstream =
-      StreamController<Duration>.broadcast();
+  final BehaviorSubject<Duration> _durationstream = BehaviorSubject<Duration>();
   StreamSink<Duration> get durationSink => _durationstream.sink;
   Stream<Duration> get onDurationChanged => _durationstream.stream;
 
@@ -164,17 +165,12 @@ class FlutterFlexPlayerController {
   }
 
   /// Returns whether the video player is playing.
-  bool get isPlaying {
-    if (isInitialized) {
-      return true;
-    }
-    return false;
-  }
+  bool isPlaying = false;
 
   /// Stream of [PlayerState] emitted when the video player is playing.
   /// The stream emits whether the video player is playing.
-  final StreamController<PlayerState> _playerstatestream =
-      StreamController<PlayerState>.broadcast();
+  final BehaviorSubject<PlayerState> _playerstatestream =
+      BehaviorSubject<PlayerState>();
 
   StreamSink<PlayerState> get playerStateSink => _playerstatestream.sink;
   Stream<PlayerState> get onPlayerStateChanged => _playerstatestream.stream;
@@ -215,8 +211,8 @@ class FlutterFlexPlayerController {
   }
 
   /// On PlayBack Speed Change Stream
-  final StreamController<double> _playbackSpeedStream =
-      StreamController<double>.broadcast();
+  final BehaviorSubject<double> _playbackSpeedStream =
+      BehaviorSubject<double>();
 
   StreamSink<double> get playbackSpeedSink => _playbackSpeedStream.sink;
   Stream<double> get onPlaybackSpeedChanged => _playbackSpeedStream.stream;
@@ -324,17 +320,7 @@ class FlutterFlexPlayerController {
 
   void reload() async {
     _initializationstream.add(InitializationEvent.initializing);
-    try {
-      // await _videoPlayerController.initialize();
-      // await _videoPlayerController.seekTo(_previousPosition);
-      // _positionstream.add(_previousPosition);
-      // _videoPlayerController.setPlaybackSpeed(configuration.playbackSpeed);
-      // _videoPlayerController.setVolume(configuration.volume);
-      // _videoPlayerController.setLooping(configuration.loop);
-      // if (configuration.isPlaying) {
-      //   _videoPlayerController.play();
-      // }
-    } catch (e) {
+    try {} catch (e) {
       _initializationstream.add(InitializationEvent.uninitialized);
     }
   }
@@ -354,7 +340,9 @@ class FlutterFlexPlayerController {
   }
 
   void seekTo(Duration position) async {
-    if (isInitialized) {}
+    if (isInitialized) {
+      channel.seekTo(position);
+    }
   }
 
   void setLooping(bool looping) {
@@ -390,9 +378,6 @@ class FlutterFlexPlayerController {
 
   void dispose() {
     _initializationstream.close();
-    _positionstream.close();
-    _durationstream.close();
-    _playerstatestream.close();
     channel.dispose();
   }
 
@@ -585,8 +570,7 @@ class FlutterFlexPlayerController {
   String selectedQuality = 'Auto';
 
   /// On Quality Change Stream
-  final StreamController<String> _qualityStream =
-      StreamController<String>.broadcast();
+  final BehaviorSubject<String> _qualityStream = BehaviorSubject<String>();
   Stream<String> get onQualityChanged => _qualityStream.stream;
 
   RxList<String> qualities = <String>[].obs;

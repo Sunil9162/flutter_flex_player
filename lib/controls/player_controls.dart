@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_flex_player/controls/player_controller.dart';
@@ -218,44 +220,55 @@ class _PlayerControlsState extends State<PlayerControls> {
             },
           ),
           (context.width * 0.1).widthBox,
-          StreamBuilder<InitializationEvent>(
-            stream: widget.controller.onInitialized,
-            builder: (context, initalization) {
+          StreamBuilder<CombinedState>(
+            key: const ValueKey("combinedStream"),
+            stream: playerController.combinedStateController.stream,
+            builder: (context, snapshot) {
+              final combinedState = snapshot.data;
+              if (combinedState == null) {
+                // Show a loading indicator if no data is available yet
+                return const CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation(Colors.red),
+                );
+              }
+              // Access InitializationEvent and PlayerState from the combined data
+              final initializationEvent = combinedState.initializationEvent;
+              final playerState = combinedState.playerState;
               return IgnorePointer(
                 ignoring:
-                    initalization.data == InitializationEvent.initializing,
+                    initializationEvent == InitializationEvent.initializing ||
+                        playerState == PlayerState.buffering,
                 child: IconButton(
-                  icon: initalization.data == InitializationEvent.initializing
-                      ? const CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation(Colors.white),
-                        )
-                      : initalization.data == InitializationEvent.uninitialized
-                          ? const Icon(
-                              Icons.replay,
-                              color: Colors.white,
-                              size: 35,
-                            )
-                          : StreamBuilder<PlayerState>(
-                              stream:
-                                  playerController.player.onPlayerStateChanged,
-                              builder: (context, snapshot) {
-                                if (snapshot.data == PlayerState.buffering) {
-                                  return const CircularProgressIndicator(
-                                    valueColor:
-                                        AlwaysStoppedAnimation(Colors.white),
-                                  );
-                                }
-                                return AnimatedIcon(
-                                  icon: AnimatedIcons.pause_play,
-                                  progress:
-                                      playerController.playPauseController,
-                                  color: Colors.white,
-                                  size: 35,
-                                );
-                              },
-                            ),
+                  icon: Builder(builder: (_) {
+                    if (initializationEvent ==
+                        InitializationEvent.initializing) {
+                      return const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation(Colors.white),
+                      );
+                    }
+                    if (initializationEvent ==
+                        InitializationEvent.uninitialized) {
+                      return const Icon(
+                        Icons.replay,
+                        color: Colors.white,
+                        size: 35,
+                      );
+                    }
+                    if (playerState == PlayerState.buffering) {
+                      log("PlayerState: ${playerState.name}");
+                      return const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation(Colors.white),
+                      );
+                    }
+                    return AnimatedIcon(
+                      icon: AnimatedIcons.pause_play,
+                      progress: playerController.playPauseController,
+                      color: Colors.white,
+                      size: 35,
+                    );
+                  }),
                   onPressed: () {
-                    if (playerController.player.isInitialized) {
+                    if (widget.controller.isInitialized) {
                       playerController.togglePlayPause();
                     } else {
                       playerController.player.reload();
@@ -282,4 +295,11 @@ class _PlayerControlsState extends State<PlayerControls> {
       ),
     );
   }
+}
+
+class CombinedState {
+  final InitializationEvent initializationEvent;
+  final PlayerState playerState;
+
+  CombinedState(this.initializationEvent, this.playerState);
 }

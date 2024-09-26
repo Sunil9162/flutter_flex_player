@@ -1,6 +1,7 @@
 library flutter_flex_player;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_flex_player/controls/player_controller.dart';
 import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
 import 'package:flutter_flex_player/helpers/configuration.dart';
 import 'package:flutter_flex_player/pages/player_builder.dart';
@@ -52,6 +53,7 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
     if (configuration.autoDispose) {
       _controller.dispose();
     }
+    Get.delete<PlayerController>(force: true);
     WakelockPlus.disable();
     super.dispose();
   }

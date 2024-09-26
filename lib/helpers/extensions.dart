@@ -2,7 +2,7 @@ import 'dart:core';
 
 import 'package:flutter/material.dart';
 
-extension ContextExtensio on BuildContext {
+extension ContextExtensions on BuildContext {
   double get width => MediaQuery.of(this).size.width;
   double get height => MediaQuery.of(this).size.height;
   Orientation get orientation => MediaQuery.of(this).orientation;

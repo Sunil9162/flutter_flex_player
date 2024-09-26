@@ -2,14 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_flex_player/controls/player_controls.dart';
 import 'package:get/get.dart';
+import 'package:rxdart/rxdart.dart' as dart;
 
 import '../flutter_flex_player_controller.dart';
 
 class PlayerController extends GetxController with GetTickerProviderStateMixin {
   static PlayerController get instance => Get.isRegistered<PlayerController>()
       ? Get.find()
-      : Get.put(PlayerController());
+      : Get.put(PlayerController(), permanent: true);
 
   late FlutterFlexPlayerController _controller;
 
@@ -22,11 +24,36 @@ class PlayerController extends GetxController with GetTickerProviderStateMixin {
   AnimationController get playPauseController => _playPauseController;
   late StreamSubscription<PlayerState>? _playerStateSubscription;
 
+  // Make sure the StreamController is broadcast
+  dart.BehaviorSubject<CombinedState> combinedStateController =
+      dart.BehaviorSubject<CombinedState>();
+
+  StreamSubscription<CombinedState>? _streamSubscription;
+
   Timer? _timer;
   RxBool isControlsVisible = true.obs;
+  bool _isInitDone = false;
+  Stream<CombinedState>? combinedStream;
 
   initPlayerControls(FlutterFlexPlayerController controller) {
+    if (_isInitDone == true) {
+      return;
+    }
     _controller = controller;
+    _streamSubscription?.cancel();
+    combinedStream =
+        dart.Rx.combineLatest2<InitializationEvent, PlayerState, CombinedState>(
+      player.onInitialized,
+      player.onPlayerStateChanged,
+      (initializationEvent, playerState) =>
+          CombinedState(initializationEvent, playerState),
+    ).asBroadcastStream(); // Convert to broadcast stream
+
+    // Subscribe to the combined stream
+    _streamSubscription = combinedStream?.listen((combinedState) {
+      combinedStateController.add(combinedState);
+    });
+
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
@@ -48,6 +75,7 @@ class PlayerController extends GetxController with GetTickerProviderStateMixin {
       _playPauseController.reverse();
     }
     startTimer();
+    _isInitDone = true;
   }
 
   void startTimer() {
