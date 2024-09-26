@@ -19,9 +19,8 @@ import android.widget.LinearLayout;
 import com.google.gson.Gson;
 import java.util.Map;
 
-public class PlayerView implements PlatformView, MethodChannel.MethodCallHandler, EventChannel.StreamHandler {
+public class PlayerView implements PlatformView, MethodChannel.MethodCallHandler  {
     private final LinearLayout layout;
-    private EventChannel.EventSink messenger;
     private VideoPlayerView videoPlayerView = null;
 
     public PlayerView(Context context, BinaryMessenger messenger, int viewId) {
@@ -35,7 +34,6 @@ public class PlayerView implements PlatformView, MethodChannel.MethodCallHandler
             @Override
             public void onSurfaceTextureAvailable(@NonNull SurfaceTexture surface, int width, int height) {
                 videoPlayerView.setTextureView(surface);
-
             }
 
             @Override
@@ -53,24 +51,12 @@ public class PlayerView implements PlatformView, MethodChannel.MethodCallHandler
 
             }
         });
-        MethodChannel methodChannel = new MethodChannel(messenger, "flutter_flex_player_" + viewId);
+        MethodChannel methodChannel = new MethodChannel(messenger, "flutter_flex_player");
         methodChannel.setMethodCallHandler(this);
-        EventChannel eventChannel = new EventChannel(messenger, "flutter_flex_player/events_" + viewId);
-        eventChannel.setStreamHandler(this);
+        EventChannel eventChannel = new EventChannel(messenger, "flutter_flex_player/events");
+        eventChannel.setStreamHandler(this.videoPlayerView);
     }
 
-    @Override
-    public void onListen(Object arguments, EventChannel.EventSink events) {
-        messenger = events;
-        this.videoPlayerView.setEventSink(messenger);
-    }
-
-
-
-    @Override
-    public void onCancel(Object arguments) {
-        messenger = null;
-    }
 
 
     @Override

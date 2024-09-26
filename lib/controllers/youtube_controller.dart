@@ -23,16 +23,14 @@ class FlexYoutubeController extends GetxController {
     return cleaned;
   }
 
-  Future<void> getVideoDetails(String videoId) async {
+  Future<void> getVideoDetails(String videoId, {bool isLive = false}) async {
     try {
       videosList.clear();
-      final video = await yt.videos.get(VideoId(videoId));
-      if (video.isLive) {
+      if (isLive) {
         final videoUrl =
             await yt.videos.streams.getHttpLiveStreamUrl(VideoId(videoId));
         final response = await get(Uri.parse(videoUrl));
         String m3u8Content = response.body;
-        // Extract stream qualities
         List<Map<String, String>> qualities = parseM3U8Content(m3u8Content);
         for (var element in qualities) {
           videosList.add(

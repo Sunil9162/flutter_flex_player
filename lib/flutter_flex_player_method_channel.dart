@@ -1,4 +1,4 @@
-import 'dart:developer';
+import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_flex_player/controllers/youtube_controller.dart';
@@ -15,10 +15,9 @@ class MethodChannelFlutterFlexPlayer extends FlutterFlexPlayerPlatform {
   late MethodChannel methodChannel;
   late EventChannel eventChannel;
 
-  Future<void> setupChannels(int id) async {
-    methodChannel = MethodChannel('flutter_flex_player_$id');
-    eventChannel = EventChannel("${_eventChannelName}_$id");
-    log("Channel is setup with id $id");
+  Future<void> setupChannels() async {
+    methodChannel = const MethodChannel('flutter_flex_player');
+    eventChannel = const EventChannel(_eventChannelName);
   }
 
   @override

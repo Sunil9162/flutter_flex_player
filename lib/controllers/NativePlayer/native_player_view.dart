@@ -7,14 +7,14 @@ import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
 
 class NativePlayerView extends StatefulWidget {
   final FlutterFlexPlayerController? flexPlayerController;
-  const NativePlayerView({super.key, this.flexPlayerController});
+  const NativePlayerView({
+    super.key,
+    this.flexPlayerController,
+  });
 
   @override
   State<NativePlayerView> createState() => _NativePlayerViewState();
 }
-
-typedef NativePlayerCreatedCallBack = void Function(
-    FlutterFlexPlayerController controller);
 
 class _NativePlayerViewState extends State<NativePlayerView> {
   @override
@@ -45,23 +45,9 @@ class _NativePlayerViewState extends State<NativePlayerView> {
         )
           ..addOnPlatformViewCreatedListener((int id) {
             params.onPlatformViewCreated(id);
-            if (widget.flexPlayerController == null) {
-              return;
-            }
-            widget.flexPlayerController!.channel.setupChannels(id);
           })
           ..create();
       },
-    );
-    return AndroidView(
-      viewType: "player",
-      onPlatformViewCreated: (id) {
-        if (widget.flexPlayerController == null) {
-          return;
-        }
-        widget.flexPlayerController!.channel.setupChannels(id);
-      },
-      creationParamsCodec: const StandardMessageCodec(),
     );
   }
 }

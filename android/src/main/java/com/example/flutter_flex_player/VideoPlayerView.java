@@ -8,7 +8,9 @@ import android.net.Uri;
 import androidx.annotation.NonNull;
 import androidx.annotation.OptIn;
 import androidx.media3.common.MediaItem;
+import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
+import androidx.media3.common.Timeline;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.datasource.DefaultDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
@@ -24,13 +26,15 @@ import android.view.TextureView;
 
 import com.google.gson.Gson;
 
+import java.sql.Time;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
 import io.flutter.plugin.common.EventChannel;
 
-public class VideoPlayerView {
+public class VideoPlayerView implements EventChannel.StreamHandler {
     @SuppressLint("StaticFieldLeak")
     private static VideoPlayerView instance;
     private ExoPlayer player;
@@ -38,6 +42,8 @@ public class VideoPlayerView {
     private ArrayList<VideoData> videoData;
     private EventChannel.EventSink eventSink;
     private final Handler handler;
+    private Runnable positionRunnable;
+    private static final long POSITION_UPDATE_INTERVAL_MS = 1000;
 
     @OptIn(markerClass = UnstableApi.class)
     private VideoPlayerView(Context context) {
@@ -47,10 +53,109 @@ public class VideoPlayerView {
             player = new ExoPlayer.Builder(context).build();
             player.addListener(new Player.Listener() {
                 @Override
-                public void onPlaybackStateChanged( int playbackState) {
-                    notifyPlayerState(playbackState); // Notify player state
+                public void onPlaybackStateChanged(int playbackState) {
+                    Map<Object, Object> map = new HashMap<>();
+
+                    switch (playbackState) {
+                        case Player.STATE_IDLE:
+                            map.put("state", "stopped");  // Stopped or idle
+                            break;
+                        case Player.STATE_BUFFERING:
+                            map.put("state", "buffering");  // Buffering
+                            break;
+                        case Player.STATE_READY:
+                            if (player.getPlayWhenReady()) {
+                                map.put("state", "playing");  // Playing
+                            } else {
+                                map.put("state", "paused");  // Paused
+                            }
+                            break;
+                        case Player.STATE_ENDED:
+                            map.put("state", "ended");  // Ended
+                            break;
+                    }
+                    sendMapData(map);
+                }
+
+                @Override
+                public void onTimelineChanged(@NonNull Timeline timeline, @Player.TimelineChangeReason int reason) {
+                    notifyPlayerTimeChanged(timeline);
+                }
+
+//                @Override
+//                public void onIsLoadingChanged(boolean isLoading) {
+//                    Map<Object, Object> map = new HashMap<>();
+//                    map.put("state", isLoading ? "buffering" : "ready");
+//                    sendMapData(map);
+//                }
+
+                @Override
+                public void onIsPlayingChanged(boolean isPlaying) {
+                    Map<Object, Object> map = new HashMap<>();
+                    map.put("state", isPlaying ? "playing" : "paused");
+                    sendMapData(map);
+                }
+
+                @Override
+                public void onPlayerError(@NonNull PlaybackException error) {
+                    Map<Object, Object> map = Map.of("error", error.getMessage());
+                    sendMapData(map);
                 }
             });
+            startPositionUpdate();
+
+        }
+    }
+
+    private void startPositionUpdate() {
+        positionRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (eventSink != null && player != null) {
+                    long duration = player.getDuration();
+                    long position = player.getCurrentPosition();
+
+                    Map<Object, Object> map = Map.of(
+                            "position", position,
+                            "duration", duration
+                    );
+                    // Send position and duration to the Flutter side
+                    sendMapData(map);
+                    // Post the runnable again to keep updating position
+                }
+                handler.postDelayed(this, POSITION_UPDATE_INTERVAL_MS);
+            }
+        };
+
+        // Start the first update immediately
+        handler.post(positionRunnable);
+    }
+
+    // Call this to stop position updates when the player is stopped or destroyed
+    private void stopPositionUpdate() {
+        if (positionRunnable != null) {
+            handler.removeCallbacks(positionRunnable);
+        }
+    }
+
+    private void notifyPlayerTimeChanged(@NonNull Timeline timeline) {
+        if (eventSink != null && player != null) {
+            Map<Object, Object> map = Map.of(
+                    "duration", player.getDuration(),
+                    "position", player.getCurrentPosition()
+            );
+            sendMapData(map);
+        }
+    }
+
+
+    private void sendInitializationEvent(InitializationEvent event) {
+        if (eventSink != null) {
+            Map<Object, Object> map = new HashMap<>();
+            map.put("initializationEvent", event.name()); // Send the event name as a string
+            sendMapData(map); // This method should send the event data to Flutter
+        } else {
+            Log.d("PlayerView", "EventSink is null, cannot send initialization event");
         }
     }
 
@@ -62,7 +167,10 @@ public class VideoPlayerView {
     // Send the event to Flutter on Main Thread
     private void sendEvent(Object event) {
         if (eventSink != null) {
+            Log.d("PlayerView", "Sending event: " + event.toString());
             handler.post(() -> eventSink.success(event));
+        }else {
+            Log.d("PlayerView", "EventSink is null");
         }
     }
 
@@ -70,9 +178,7 @@ public class VideoPlayerView {
         Surface surface = new Surface(textureView);
         player.setVideoSurface(surface);
     }
-    public void setEventSink(EventChannel.EventSink eventSink) {
-        this.eventSink = eventSink;
-    }
+
     // Singleton instance method
     public static VideoPlayerView getInstance(Context context) {
         if (instance == null) {
@@ -81,24 +187,18 @@ public class VideoPlayerView {
         return instance;
     }
 
-    private void notifyPlayerState(int state) {
-        if (eventSink != null) {
-            Map<Object, Object> map = Map.of("state", state);
-            sendMapData(map);
-        }
-    }
 
-
-    public ExoPlayer getPlayer(){
+    public ExoPlayer getPlayer() {
         return player;
     }
 
     @OptIn(markerClass = UnstableApi.class)
     public void loadPlayer(@NonNull Map<Object, Object> arguments) {
-        if (this.videoData != null){
+        if (this.videoData != null) {
             return;
         }
         try {
+            sendInitializationEvent(InitializationEvent.initializing);
             Log.d("PlayerView", "Loading player");
             this.videoData = new ArrayList<>();
             ArrayList<Map<Object, Object>> videoData = (ArrayList<Map<Object, Object>>) arguments.get("videoData");
@@ -116,7 +216,6 @@ public class VideoPlayerView {
             double volume = (double) arguments.get("volume");
             double playbackSpeed = (double) arguments.get("playbackSpeed");
             int position = (int) arguments.get("position");
-            player = new ExoPlayer.Builder(context).build();
             player.setPlayWhenReady(autoPlay);
             player.setRepeatMode(loop ? ExoPlayer.REPEAT_MODE_ALL : ExoPlayer.REPEAT_MODE_OFF);
             player.setVolume((float) volume);
@@ -124,37 +223,40 @@ public class VideoPlayerView {
             player.seekTo(position);
             initializePlayer();
         } catch (Exception e) {
+            sendInitializationEvent(InitializationEvent.uninitialized);
             Log.e("PlayerView", "Error loading player: " + e.getMessage());
         }
     }
 
     @OptIn(markerClass = UnstableApi.class)
     private void initializePlayer() {
-        String audioUrl = videoData.get(0).getAudioUrl();
-        String videoUrl = videoData.get(0).getVideoUrl();
-        playWithAudioAndVideo(videoUrl, audioUrl);
-        Log.d("VideoPlayerView", "Player initialized");
+        try {
+            String audioUrl = videoData.get(0).getAudioUrl();
+            String videoUrl = videoData.get(0).getVideoUrl();
+            playWithAudioAndVideo(videoUrl, audioUrl);
+            sendInitializationEvent(InitializationEvent.initialized);
+        } catch (Exception e){
+            sendInitializationEvent(InitializationEvent.uninitialized);
+        }
     }
 
     @OptIn(markerClass = UnstableApi.class)
     private void playWithAudioAndVideo(String videoUrl, String audioUrl) {
-       try {
-           if (videoUrl == null || audioUrl == null) {
-               Log.e("VideoPlayerView", "Invalid video or audio URL");
-               return;
-           }
-           Log.d("PlayerView", "Audio URL: " + audioUrl);
-           Log.d("PlayerView", "Video URL: " + videoUrl);
-           MediaSource videoSource = buildMediaSource(Uri.parse(videoUrl));
-           MediaSource audioSource = buildMediaSource(Uri.parse(audioUrl));
-           MergingMediaSource mergedSource = new MergingMediaSource(videoSource, audioSource);
-           player.setMediaSource(mergedSource);
-           player.prepare();
-           player.play();
-           Log.d("PlayerView", "Player started");
-       } catch (Exception e){
-           Log.e("PlayerView", Objects.requireNonNull(e.getMessage()));
-       }
+        try {
+            if (videoUrl == null || audioUrl == null) {
+                Log.e("VideoPlayerView", "Invalid video or audio URL");
+                return;
+            }
+            MediaSource videoSource = buildMediaSource(Uri.parse(videoUrl));
+            MediaSource audioSource = buildMediaSource(Uri.parse(audioUrl));
+            MergingMediaSource mergedSource = new MergingMediaSource(videoSource, audioSource);
+            player.setMediaSource(mergedSource);
+            player.prepare();
+            player.play();
+            Log.d("PlayerView", "Player started");
+        } catch (Exception e) {
+            Log.e("PlayerView", Objects.requireNonNull(e.getMessage()));
+        }
     }
 
     @OptIn(markerClass = UnstableApi.class)
@@ -169,7 +271,23 @@ public class VideoPlayerView {
             videoData = null;
             player = null;
             instance = null;
+            stopPositionUpdate();
             Log.d("PlayerView", "Player released");
         }
+    }
+
+    @Override
+    public void onListen(Object arguments, EventChannel.EventSink events) {
+        this.eventSink = events;
+        if (player != null) {
+            notifyPlayerTimeChanged(player.getCurrentTimeline());
+        }
+        Log.d("PlayerView","EventSink Added");
+    }
+
+    @Override
+    public void onCancel(Object arguments) {
+        this.eventSink = null;
+        stopPositionUpdate();
     }
 }

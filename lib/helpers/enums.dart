@@ -5,10 +5,11 @@ enum InitializationEvent {
 }
 
 enum PlayerState {
-  playing,
-  paused,
   stopped,
   buffering,
+  ready,
+  playing,
+  paused,
   ended,
 }
 

@@ -21,6 +21,7 @@ export 'helpers/enums.dart';
 
 class FlutterFlexPlayerController {
   MethodChannelFlutterFlexPlayer channel = MethodChannelFlutterFlexPlayer();
+  StreamSubscription? eventStreamSubScription;
 
   FlutterFlexPlayerController._internal() {
     nativePlayer.value = RepaintBoundary(
@@ -28,6 +29,68 @@ class FlutterFlexPlayerController {
         flexPlayerController: this,
       ),
     );
+    channel.setupChannels();
+  }
+
+  startListner() {
+    log("Subscription Started");
+    eventStreamSubScription?.cancel();
+    eventStreamSubScription =
+        channel.eventChannel.receiveBroadcastStream().listen(
+      (event) {
+        parseEvent(event);
+      },
+    );
+  }
+
+  parseEvent(dynamic event) {
+    log(event.toString());
+    final data = Map<String, dynamic>.from(event);
+    if (data.containsKey('state')) {
+      _mapStateFromString(data['state']);
+    }
+    if (data.containsKey('duration') || data.containsKey("position")) {
+      final duration = Duration(milliseconds: int.parse(data['duration']));
+      final position = Duration(milliseconds: int.parse(data['position']));
+      durationSink.add(duration);
+      positionSink.add(position);
+    }
+    if (data.containsKey('initializationEvent')) {
+      initializationSink
+          .add(_mapInitializationEventFromString(data['initializationEvent']));
+    }
+  }
+
+  InitializationEvent _mapInitializationEventFromString(String event) {
+    switch (event) {
+      case 'initializing':
+        return InitializationEvent.initializing;
+      case 'initialized':
+        return InitializationEvent.initialized;
+      case 'uninitialized':
+        return InitializationEvent.uninitialized;
+      default:
+        return InitializationEvent.uninitialized;
+    }
+  }
+
+  PlayerState _mapStateFromString(String state) {
+    switch (state) {
+      case 'stopped':
+        return PlayerState.stopped;
+      case 'buffering':
+        return PlayerState.buffering;
+      case 'ready':
+        return PlayerState.ready;
+      case 'playing':
+        return PlayerState.playing;
+      case 'paused':
+        return PlayerState.paused;
+      case 'ended':
+        return PlayerState.ended;
+      default:
+        return PlayerState.stopped;
+    }
   }
 
   // The static singleton instance
@@ -43,13 +106,7 @@ class FlutterFlexPlayerController {
   static FlutterFlexPlayerController get instance => _instance;
 
   /// Returns whether the video player is initialized.
-  bool get isInitialized {
-    try {
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
+  bool isInitialized = false;
 
   /// Stream of [InitializationEvent] emitted when the video player is initialized.
   /// The stream emits whether the video player is initialized.
@@ -166,42 +223,6 @@ class FlutterFlexPlayerController {
 
   VoidCallback? listner;
 
-  void _startListeners() {
-    _stopListeners();
-    // _durationstream.add(_videoPlayerController.value.duration);
-    // listner = () {
-    //   if (_videoPlayerController.value.hasError) {
-    //     _initializationstream.add(InitializationEvent.uninitialized);
-    //   }
-    //   if (_videoPlayerController.value.isInitialized) {
-    //     _initializationstream.add(InitializationEvent.initialized);
-    //     _positionstream.add(_videoPlayerController.value.position);
-    //     if (_videoPlayerController.value.hasError == false) {
-    //       _previousPosition = _videoPlayerController.value.position;
-    //     }
-    //     _updatePlayerState();
-    //     _playbackSpeedStream.add(_videoPlayerController.value.playbackSpeed);
-    //   }
-    // };
-    // _videoPlayerController.addListener(listner!);
-  }
-
-  void _stopListeners() {
-    // if (listner != null) _videoPlayerController.removeListener(listner!);
-  }
-
-  void _updatePlayerState() {
-    // if (_videoPlayerController.value.isPlaying) {
-    //   _playerstatestream.add(PlayerState.playing);
-    // } else if (_videoPlayerController.value.isBuffering) {
-    //   _playerstatestream.add(PlayerState.buffering);
-    // } else if (_videoPlayerController.value.isCompleted) {
-    //   _playerstatestream.add(PlayerState.ended);
-    // } else if (!isPlaying) {
-    //   _playerstatestream.add(PlayerState.paused);
-    // }
-  }
-
   RxList<VideoData> videosList = <VideoData>[].obs;
   FlexPlayerSource? _source;
   FlexPlayerSource? get source => _source;
@@ -230,37 +251,9 @@ class FlutterFlexPlayerController {
       isPlaying: autoPlay,
     );
     _initializationstream.add(InitializationEvent.initializing);
-    if (source is YouTubeFlexPlayerSource) {
-      final isNotLive =
-          await FlexYoutubeController.instance.isNotLive(source.videoId);
-      if (isNotLive) {
-        final flexYoutubecontroller = FlexYoutubeController.instance;
-        await flexYoutubecontroller
-            .getVideoDetails(source.videoId)
-            .then((value) {
-          qualities.value = flexYoutubecontroller.videosList
-              .map((e) => e.quality)
-              .toSet()
-              .toList();
-          selectedQuality = flexYoutubecontroller.videosList.first.quality;
-          log("Videos Loaded: ${qualities.length}");
-          channel.load(
-            videoData: flexYoutubecontroller.videosList,
-            autoPlay: autoPlay,
-            loop: loop,
-            mute: mute,
-            volume: volume,
-            playbackSpeed: playbackSpeed,
-          );
-        });
-        _initializationstream.add(InitializationEvent.initialized);
-        return;
-      }
-    }
     try {
       _source = source;
       if (source is AssetFlexPlayerSource) {
-        // _videoPlayerController = VideoPlayerController.asset(source.asset);
       } else if (source is NetworkFlexPlayerSource) {
         if (source.url.endsWith('.m3u8')) {
           final response = await get(Uri.parse(source.url));
@@ -283,43 +276,47 @@ class FlutterFlexPlayerController {
         }
         qualities.value = videosList.map((e) => e.quality).toSet().toList();
         qualities.sort((a, b) => a.compareTo(b));
-        // _videoPlayerController = VideoPlayerController.networkUrl(
-        //   videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
-        //   Uri.parse(videosList.first.url),
-        // );
       } else if (source is FileFlexPlayerSource) {
-        // _videoPlayerController = VideoPlayerController.file(source.file);
       } else if (source is YouTubeFlexPlayerSource) {
         final videoId = source.videoId;
         final flexYoutubecontroller = FlexYoutubeController.instance;
-        await flexYoutubecontroller.getVideoDetails(videoId).then(
-          (value) {
+        final isNotLive =
+            await FlexYoutubeController.instance.isNotLive(source.videoId);
+        if (isNotLive) {
+          await flexYoutubecontroller
+              .getVideoDetails(source.videoId)
+              .then((value) {
             qualities.value = flexYoutubecontroller.videosList
                 .map((e) => e.quality)
                 .toSet()
                 .toList();
-            final streamInfo = flexYoutubecontroller.videosList.first;
+            videosList.addAll(flexYoutubecontroller.videosList.value);
             selectedQuality = flexYoutubecontroller.videosList.first.quality;
-            // _videoPlayerController = VideoPlayerController.networkUrl(
-            //   Uri.parse(streamInfo.url.toString()),
-            // );
-          },
-        );
+          });
+        } else {
+          await flexYoutubecontroller
+              .getVideoDetails(videoId, isLive: true)
+              .then(
+            (value) {
+              qualities.value = flexYoutubecontroller.videosList
+                  .map((e) => e.quality)
+                  .toSet()
+                  .toList();
+              final streamInfo = flexYoutubecontroller.videosList.first;
+              selectedQuality = flexYoutubecontroller.videosList.first.quality;
+            },
+          );
+        }
       }
-      // await _videoPlayerController.initialize().then((_) async {
-      //   _startListeners();
-      //   onInitialized!();
-      //   _videoPlayerController.setVolume(volume);
-      //   _videoPlayerController.setPlaybackSpeed(playbackSpeed);
-      //   _videoPlayerController.setLooping(loop);
-      //   if (mute) {
-      //     _videoPlayerController.setVolume(0);
-      //   }
-      //   await _videoPlayerController.seekTo(position ?? Duration.zero);
-      //   if (autoPlay) {
-      //     _videoPlayerController.play();
-      //   }
-      // });
+      startListner();
+      await channel.load(
+        videoData: videosList,
+        autoPlay: autoPlay,
+        loop: loop,
+        mute: mute,
+        volume: volume,
+        playbackSpeed: playbackSpeed,
+      );
     } catch (e) {
       _initializationstream.add(InitializationEvent.uninitialized);
     }
@@ -337,7 +334,6 @@ class FlutterFlexPlayerController {
       // if (configuration.isPlaying) {
       //   _videoPlayerController.play();
       // }
-      _startListeners();
     } catch (e) {
       _initializationstream.add(InitializationEvent.uninitialized);
     }
@@ -397,7 +393,6 @@ class FlutterFlexPlayerController {
     _positionstream.close();
     _durationstream.close();
     _playerstatestream.close();
-    _stopListeners();
     channel.dispose();
   }
 

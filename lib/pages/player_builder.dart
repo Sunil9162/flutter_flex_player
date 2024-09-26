@@ -1,3 +1,5 @@
+library flutter_flex_player;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_flex_player/controls/player_controller.dart';
 import 'package:flutter_flex_player/controls/player_controls.dart';
