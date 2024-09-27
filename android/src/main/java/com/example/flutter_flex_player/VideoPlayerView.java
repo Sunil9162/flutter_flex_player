@@ -196,7 +196,7 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
     }
 
     @OptIn(markerClass = UnstableApi.class)
-    public void loadPlayer(@NonNull Map<Object, Object> arguments) {
+    public synchronized void loadPlayer(@NonNull Map<Object, Object> arguments) {
         if (this.videoData != null) {
             return;
         }
@@ -296,57 +296,39 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
     }
 
     public void setQuality(String quality) {
-        switchQualityFromVideoData(quality,this.videoData);
-    }
-
-
-    @OptIn(markerClass = UnstableApi.class)
-    private void switchQualityFromVideoData(String quality, ArrayList<VideoData> videoDataList) {
-        // Create TrackGroupArray from the available VideoData
-        TrackGroupArray trackGroupArray = createTrackGroupsFromVideoData(videoDataList);
-
-        // Build the TrackSelector parameters
-        DefaultTrackSelector.Parameters.Builder builder = (DefaultTrackSelector.Parameters.Builder) player.getTrackSelectionParameters().buildUpon();
-
-        // Loop through TrackGroups to find the matching quality
-        for (int i = 0; i < trackGroupArray.length; i++) {
-            TrackGroup trackGroup = trackGroupArray.get(i);
-
-            // We only have one format in each TrackGroup (videoFormat) from the earlier step
-            Format format = trackGroup.getFormat(0);
-
-            // Compare the height with the selected quality
-            if (String.valueOf(format.height).equals(quality)) {
-                // Create a TrackSelectionOverride for the matching quality
-                TrackSelectionOverride override = new TrackSelectionOverride(trackGroup, 0);  // Select the first format (we only have one)
-                builder.addOverride(override);
-                Objects.requireNonNull(player.getTrackSelector()).setParameters(builder.build());
-                return;
-            }
+        VideoData newVideo = null;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            newVideo = videoData.stream()
+                    .filter(video -> video.getQuality().equals(quality))
+                    .findFirst()
+                    .orElse(null);
+        }
+        if (newVideo != null) {
+            String audioUrl = newVideo.getAudioUrl();
+            String videoUrl = newVideo.getVideoUrl();
+            // Call the method to switch the quality without pausing
+            switchQualityWithoutPause(videoUrl, audioUrl);
         }
     }
 
-
     @OptIn(markerClass = UnstableApi.class)
-    private TrackGroupArray createTrackGroupsFromVideoData(ArrayList<VideoData> videoDataList) {
-        TrackGroup[] trackGroups = new TrackGroup[videoDataList.size()];
+    private void switchQualityWithoutPause(String videoUrl, String audioUrl) {
+        // Create new media sources for the new quality
+        MediaSource newVideoSource = buildMediaSource(Uri.parse(videoUrl));
+        MediaSource newAudioSource = buildMediaSource(Uri.parse(audioUrl));
+        MergingMediaSource newMergedSource = new MergingMediaSource(newVideoSource, newAudioSource);
 
-        for (int i = 0; i < videoDataList.size(); i++) {
-            VideoData videoData = videoDataList.get(i);
+        // Save the current position and play state
+        long currentPosition = player.getCurrentPosition();
+        boolean wasPlaying = player.isPlaying();
 
-            // Create a Format object for each VideoData quality (you can customize based on audio, video, etc.)
-            Format videoFormat = new Format.Builder()
-                    .setSampleMimeType("video/mp4")
-                    .setHeight(getQualityHeight(videoData.getQuality()))  // Convert "quality" string into height (like 720p -> 720)
-                    .build();
+        // Set the new media source and keep the playback state (don't call prepare)
+        player.setMediaSource(newMergedSource, /* resetPosition= */ false);
 
-            // Create a TrackGroup with one Format
-            trackGroups[i] = new TrackGroup(videoFormat);
+        // Ensure playback continues if it was playing before
+        if (wasPlaying) {
+            player.play(); // Resume playback if it was playing before
         }
-        return new TrackGroupArray(trackGroups);
     }
 
-    private int getQualityHeight(String quality) {
-        return Integer.parseInt(quality);
-    }
 }
