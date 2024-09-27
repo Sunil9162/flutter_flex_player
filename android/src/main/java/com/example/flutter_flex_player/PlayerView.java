@@ -102,7 +102,7 @@ public class PlayerView implements PlatformView, MethodChannel.MethodCallHandler
             case "changequality":
                 String quality = (String) call.arguments;
                 if (videoPlayerView != null) {
-//                    videoPlayerView.setQuality();
+                    videoPlayerView.setQuality(quality);
                 }
                 result.success(true);
                 break;

@@ -51,6 +51,11 @@ class PlayerController extends GetxController with GetTickerProviderStateMixin {
 
     // Subscribe to the combined stream
     _streamSubscription = combinedStream?.listen((combinedState) {
+      if (combinedState.initializationEvent ==
+              InitializationEvent.initialized &&
+          combinedState.playerState == PlayerState.playing) {
+        startTimer();
+      }
       combinedStateController.add(combinedState);
     });
 
@@ -69,6 +74,7 @@ class PlayerController extends GetxController with GetTickerProviderStateMixin {
         _playPauseController.forward();
       }
     });
+
     _playPauseController.forward();
     _animationController.forward();
     if (_controller.isPlaying) {

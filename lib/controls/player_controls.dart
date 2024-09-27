@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_flex_player/controls/player_controller.dart';
 import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
 import 'package:flutter_flex_player/helpers/extensions.dart';
+import 'package:flutter_flex_player/helpers/streams.dart';
 
 class PlayerControls extends StatefulWidget {
   final FlutterFlexPlayerController controller;
@@ -85,18 +86,18 @@ class _PlayerControlsState extends State<PlayerControls> {
                         ignoring: snapshot.data ==
                                 InitializationEvent.initializing ||
                             snapshot.data == InitializationEvent.uninitialized,
-                        child: StreamBuilder<Duration>(
-                          stream: playerController.player.onPositionChanged,
+                        child: StreamBuilder<PlayBackDurationStream>(
+                          stream:
+                              playerController.player.playbackDurationStream,
                           builder: (context, snapshot) {
-                            final duration = playerController.player.duration;
-                            final position = snapshot.data ??
-                                playerController.player.position;
+                            final duration = snapshot.data?.duration;
+                            final position = snapshot.data?.position;
                             return ProgressBar(
                               thumbCanPaintOutsideBar: false,
-                              progress: position,
-                              total: duration,
+                              progress: position ?? Duration.zero,
+                              total: duration ?? Duration.zero,
                               buffered:
-                                  playerController.player.bufferedPosition,
+                                  snapshot.data?.buffered ?? Duration.zero,
                               timeLabelTextStyle: const TextStyle(
                                 fontSize: 12,
                                 color: Colors.white,

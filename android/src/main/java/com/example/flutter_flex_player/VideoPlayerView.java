@@ -17,20 +17,25 @@ import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.MergingMediaSource;
 import androidx.media3.exoplayer.source.ProgressiveMediaSource;
+import androidx.media3.exoplayer.source.TrackGroupArray;
+import androidx.media3.ui.PlayerView;
 
 import android.os.Handler;
 import android.util.Log;
 import android.view.Surface;
-import android.view.TextureView;
+import androidx.media3.common.TrackGroup;
+import androidx.media3.common.Format;
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
+import androidx.media3.common.TrackSelectionOverride;
 
 
 import com.google.gson.Gson;
 
-import java.sql.Time;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 import io.flutter.plugin.common.EventChannel;
 
@@ -44,6 +49,7 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
     private final Handler handler;
     private Runnable positionRunnable;
     private static final long POSITION_UPDATE_INTERVAL_MS = 1000;
+    private PlayerView playerView;
 
     @OptIn(markerClass = UnstableApi.class)
     private VideoPlayerView(Context context) {
@@ -82,13 +88,6 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
                     notifyPlayerTimeChanged(timeline);
                 }
 
-//                @Override
-//                public void onIsLoadingChanged(boolean isLoading) {
-//                    Map<Object, Object> map = new HashMap<>();
-//                    map.put("state", isLoading ? "buffering" : "ready");
-//                    sendMapData(map);
-//                }
-
                 @Override
                 public void onIsPlayingChanged(boolean isPlaying) {
                     Map<Object, Object> map = new HashMap<>();
@@ -119,7 +118,8 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
 
                     Map<Object, Object> map = Map.of(
                             "position", position,
-                            "duration", duration
+                            "duration", duration,
+                            "buffered", player.getBufferedPosition()
                     );
                     // Send position and duration to the Flutter side
                     sendMapData(map);
@@ -144,7 +144,8 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
         if (eventSink != null && player != null) {
             Map<Object, Object> map = Map.of(
                     "duration", player.getDuration(),
-                    "position", player.getCurrentPosition()
+                    "position", player.getCurrentPosition(),
+                    "buffered", player.getBufferedPosition()
             );
             sendMapData(map);
         }
@@ -221,6 +222,7 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
             player.setPlayWhenReady(autoPlay);
             player.setRepeatMode(loop ? ExoPlayer.REPEAT_MODE_ALL : ExoPlayer.REPEAT_MODE_OFF);
             player.setVolume((float) volume);
+            player.setVolume(mute?0:1);
             player.setPlaybackSpeed((float) playbackSpeed);
             player.seekTo(position);
             initializePlayer();
@@ -291,5 +293,60 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
     public void onCancel(Object arguments) {
         this.eventSink = null;
         stopPositionUpdate();
+    }
+
+    public void setQuality(String quality) {
+        switchQualityFromVideoData(quality,this.videoData);
+    }
+
+
+    @OptIn(markerClass = UnstableApi.class)
+    private void switchQualityFromVideoData(String quality, ArrayList<VideoData> videoDataList) {
+        // Create TrackGroupArray from the available VideoData
+        TrackGroupArray trackGroupArray = createTrackGroupsFromVideoData(videoDataList);
+
+        // Build the TrackSelector parameters
+        DefaultTrackSelector.Parameters.Builder builder = (DefaultTrackSelector.Parameters.Builder) player.getTrackSelectionParameters().buildUpon();
+
+        // Loop through TrackGroups to find the matching quality
+        for (int i = 0; i < trackGroupArray.length; i++) {
+            TrackGroup trackGroup = trackGroupArray.get(i);
+
+            // We only have one format in each TrackGroup (videoFormat) from the earlier step
+            Format format = trackGroup.getFormat(0);
+
+            // Compare the height with the selected quality
+            if (String.valueOf(format.height).equals(quality)) {
+                // Create a TrackSelectionOverride for the matching quality
+                TrackSelectionOverride override = new TrackSelectionOverride(trackGroup, 0);  // Select the first format (we only have one)
+                builder.addOverride(override);
+                Objects.requireNonNull(player.getTrackSelector()).setParameters(builder.build());
+                return;
+            }
+        }
+    }
+
+
+    @OptIn(markerClass = UnstableApi.class)
+    private TrackGroupArray createTrackGroupsFromVideoData(ArrayList<VideoData> videoDataList) {
+        TrackGroup[] trackGroups = new TrackGroup[videoDataList.size()];
+
+        for (int i = 0; i < videoDataList.size(); i++) {
+            VideoData videoData = videoDataList.get(i);
+
+            // Create a Format object for each VideoData quality (you can customize based on audio, video, etc.)
+            Format videoFormat = new Format.Builder()
+                    .setSampleMimeType("video/mp4")
+                    .setHeight(getQualityHeight(videoData.getQuality()))  // Convert "quality" string into height (like 720p -> 720)
+                    .build();
+
+            // Create a TrackGroup with one Format
+            trackGroups[i] = new TrackGroup(videoFormat);
+        }
+        return new TrackGroupArray(trackGroups);
+    }
+
+    private int getQualityHeight(String quality) {
+        return Integer.parseInt(quality);
     }
 }
