@@ -805,9 +805,6 @@ class FlutterFlexPlayerController {
         (element) => element.quality == quality,
       );
       final url = video.url.toString();
-      // _videoPlayerController = VideoPlayerController.networkUrl(
-      //   Uri.parse(url),
-      // );
       reload();
     }
   }
