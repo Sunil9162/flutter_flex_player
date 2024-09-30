@@ -51,7 +51,7 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
   @override
   void dispose() {
     if (configuration.autoDispose) {
-      _controller.dispose();
+      Get.delete<FlutterFlexPlayerController>(force: true);
     }
     Get.delete<PlayerController>(force: true);
     WakelockPlus.disable();

@@ -65,6 +65,7 @@ public class PlayerView implements PlatformView, MethodChannel.MethodCallHandler
             case "load":
                 Map<Object, Object> arguments = (Map<Object, Object>) call.arguments;
                 loadPlayer(arguments);
+                result.success("Player Loaded");
                 break;
             case "play":
                 if (videoPlayerView != null) {
@@ -106,12 +107,15 @@ public class PlayerView implements PlatformView, MethodChannel.MethodCallHandler
                 }
                 result.success(true);
                 break;
+            case "reload":
+                videoPlayerView.reloadPlayer();
+                result.success("Player Reloading...");
+                break;
             case "dispose":
                 if (videoPlayerView != null) {
                     videoPlayerView.releasePlayer();
                 }
                 result.success(true);
-
                 break;
         }
     }

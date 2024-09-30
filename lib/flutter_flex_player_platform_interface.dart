@@ -3,6 +3,7 @@ import 'package:flutter_flex_player/controllers/youtube_controller.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'flutter_flex_player_method_channel.dart';
+import 'helpers/enums.dart';
 
 abstract class FlutterFlexPlayerPlatform extends PlatformInterface {
   FlutterFlexPlayerPlatform() : super(token: _token);
@@ -23,6 +24,7 @@ abstract class FlutterFlexPlayerPlatform extends PlatformInterface {
     required double playbackSpeed,
     Duration? position,
     VoidCallback? onInitialized,
+    required FileType type,
   });
   Future<void> play();
   Future<void> pause();

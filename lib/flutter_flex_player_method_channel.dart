@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_flex_player/controllers/youtube_controller.dart';
+import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
 
 import 'flutter_flex_player_platform_interface.dart';
 
@@ -15,7 +16,7 @@ class MethodChannelFlutterFlexPlayer extends FlutterFlexPlayerPlatform {
   late MethodChannel methodChannel;
   late EventChannel eventChannel;
 
-  Future<void> setupChannels() async {
+  void setupChannels(FlutterFlexPlayerController controller) {
     methodChannel = const MethodChannel('flutter_flex_player');
     eventChannel = const EventChannel(_eventChannelName);
   }
@@ -73,6 +74,7 @@ class MethodChannelFlutterFlexPlayer extends FlutterFlexPlayerPlatform {
     required double playbackSpeed,
     Duration? position,
     VoidCallback? onInitialized,
+    required FileType type,
   }) async {
     await methodChannel.invokeMethod(_methodLoad, {
       'videoData': videoData.map((e) => e.toMap()).toList(),
@@ -82,6 +84,7 @@ class MethodChannelFlutterFlexPlayer extends FlutterFlexPlayerPlatform {
       'volume': volume,
       'playbackSpeed': playbackSpeed,
       'position': position?.inMilliseconds ?? 0,
+      "type": type.index,
     });
   }
 

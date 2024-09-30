@@ -19,3 +19,9 @@ enum ControlsStyle {
   style2,
   customStyle,
 }
+
+enum FileType {
+  file,
+  url,
+  youtube,
+}

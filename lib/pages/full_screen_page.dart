@@ -1,27 +1,21 @@
 // ignore_for_file: deprecated_member_use
 
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_flex_player/helpers/configuration.dart';
-import 'package:flutter_flex_player/pages/player_builder.dart';
-import 'package:get/get.dart';
+part of '../flutter_flex_player_controller.dart';
 
-import '../flutter_flex_player_controller.dart';
-
-class FullScreenView extends StatefulWidget {
+class _FullScreenView extends StatefulWidget {
   final FlutterFlexPlayerController controller;
   final FlexPlayerConfiguration configuration;
-  const FullScreenView({
+  const _FullScreenView({
     super.key,
     required this.controller,
     required this.configuration,
   });
 
   @override
-  State<FullScreenView> createState() => _FullScreenViewState();
+  State<_FullScreenView> createState() => _FullScreenViewState();
 }
 
-class _FullScreenViewState extends State<FullScreenView> {
+class _FullScreenViewState extends State<_FullScreenView> {
   @override
   void initState() {
     super.initState();

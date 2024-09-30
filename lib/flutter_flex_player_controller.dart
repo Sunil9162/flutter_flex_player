@@ -5,35 +5,54 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_flex_player/controllers/NativePlayer/native_player_view.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
 import 'package:flutter_flex_player/flutter_flex_player_method_channel.dart';
+import 'package:flutter_flex_player/helpers/configuration.dart';
 import 'package:flutter_flex_player/helpers/extensions.dart';
 import 'package:flutter_flex_player/helpers/flex_player_sources.dart';
 import 'package:flutter_flex_player/helpers/streams.dart';
-import 'package:get/state_manager.dart';
+import 'package:flutter_flex_player/pages/player_builder.dart';
+import 'package:get/get.dart';
 import 'package:http/http.dart';
 import 'package:rxdart/rxdart.dart' as dart;
 import 'package:rxdart/rxdart.dart';
 
 import 'controllers/youtube_controller.dart';
-import 'helpers/configuration.dart';
 import 'helpers/enums.dart';
-import 'pages/full_screen_page.dart';
 
 export 'helpers/enums.dart';
 
-class FlutterFlexPlayerController {
+part './controllers/NativePlayer/native_player_view.dart';
+part './pages/full_screen_page.dart';
+
+class FlutterFlexPlayerController extends GetxController {
   MethodChannelFlutterFlexPlayer channel = MethodChannelFlutterFlexPlayer();
   StreamSubscription? eventStreamSubScription;
+  static FlutterFlexPlayerController get instance =>
+      Get.isRegistered<FlutterFlexPlayerController>()
+          ? Get.find<FlutterFlexPlayerController>()
+          : Get.put(FlutterFlexPlayerController._());
 
-  FlutterFlexPlayerController() {
+  FlutterFlexPlayerController._();
+  factory FlutterFlexPlayerController() {
+    return instance;
+  }
+
+  @override
+  void onInit() {
+    super.onInit();
     nativePlayer.value = RepaintBoundary(
-      child: NativePlayerView(
+      child: _NativePlayerView(
         flexPlayerController: this,
       ),
     );
-    channel.setupChannels();
+    channel.setupChannels(this);
+    startListner();
   }
 
   startListner() {
@@ -46,6 +65,9 @@ class FlutterFlexPlayerController {
           channel.eventChannel.receiveBroadcastStream().listen(
         (event) {
           parseEvent(event);
+        },
+        onError: (value) {
+          log(value.toString());
         },
       );
       _playbackDurationstreamSubscription = dart.Rx.combineLatest3<Duration,
@@ -147,7 +169,7 @@ class FlutterFlexPlayerController {
   /// Returns the duration of the video player.
   Duration duration = Duration.zero;
 
-  final Duration _previousPosition = Duration.zero;
+  // final Duration _previousPosition = Duration.zero;
 
   /// Stream of [Duration] emitted when the video player position changes.
   /// The stream emits the current position of the video player.
@@ -225,6 +247,7 @@ class FlutterFlexPlayerController {
 
   Rxn<Widget> nativePlayer = Rxn();
   final key = GlobalKey();
+  FileType type = FileType.file;
 
   /// Load the video player with the given [source].
 
@@ -238,6 +261,7 @@ class FlutterFlexPlayerController {
     Duration? position,
     VoidCallback? onInitialized,
   }) async {
+    channel.setupChannels(this);
     configuration = configuration.copyWith(
       autoPlay: autoPlay,
       loop: loop,
@@ -250,7 +274,9 @@ class FlutterFlexPlayerController {
     try {
       _source = source;
       if (source is AssetFlexPlayerSource) {
+        throw Exception("Asset source is currently not supported");
       } else if (source is NetworkFlexPlayerSource) {
+        type = FileType.url;
         if (source.url.endsWith('.m3u8')) {
           final response = await get(Uri.parse(source.url));
           String m3u8Content = response.body;
@@ -270,9 +296,14 @@ class FlutterFlexPlayerController {
         } else {
           videosList.add(VideoData(url: source.url, quality: 'Auto'));
         }
-        qualities.value = videosList.map((e) => e.quality).toSet().toList();
-        qualities.sort((a, b) => a.compareTo(b));
       } else if (source is FileFlexPlayerSource) {
+        type = FileType.file;
+        videosList.add(
+          VideoData(
+            url: source.file.path,
+            quality: 'Auto',
+          ),
+        );
       } else if (source is YouTubeFlexPlayerSource) {
         final videoId = source.videoId;
         final flexYoutubecontroller = FlexYoutubeController.instance;
@@ -289,6 +320,7 @@ class FlutterFlexPlayerController {
             videosList.addAll(flexYoutubecontroller.videosList.value);
             selectedQuality = flexYoutubecontroller.videosList.first.quality;
           });
+          type = FileType.youtube;
         } else {
           await flexYoutubecontroller
               .getVideoDetails(videoId, isLive: true)
@@ -298,13 +330,19 @@ class FlutterFlexPlayerController {
                   .map((e) => e.quality)
                   .toSet()
                   .toList();
-              final streamInfo = flexYoutubecontroller.videosList.first;
               selectedQuality = flexYoutubecontroller.videosList.first.quality;
+              videosList.addAll(flexYoutubecontroller.videosList.value);
             },
           );
+          type = FileType.url;
         }
       }
+      final ids = videosList.map((e) => e.quality).toSet();
+      videosList.retainWhere((x) => ids.remove(x.quality));
+      qualities.value = videosList.map((e) => e.quality).toSet().toList();
+      qualities.sort((a, b) => a.compareTo(b));
       startListner();
+      selectedQuality = videosList.first.quality;
       await channel.load(
         videoData: videosList,
         autoPlay: autoPlay,
@@ -312,6 +350,7 @@ class FlutterFlexPlayerController {
         mute: mute,
         volume: volume,
         playbackSpeed: playbackSpeed,
+        type: type,
       );
     } catch (e) {
       _initializationstream.add(InitializationEvent.uninitialized);
@@ -320,7 +359,9 @@ class FlutterFlexPlayerController {
 
   void reload() async {
     _initializationstream.add(InitializationEvent.initializing);
-    try {} catch (e) {
+    try {
+      channel.reload();
+    } catch (e) {
       _initializationstream.add(InitializationEvent.uninitialized);
     }
   }
@@ -360,23 +401,26 @@ class FlutterFlexPlayerController {
   void setPlaybackSpeed(double speed) {
     if (isInitialized) {
       configuration = configuration.copyWith(playbackSpeed: speed);
+      channel.setPlaybackSpeed(speed);
     }
   }
 
   void setVolume(double volume) {
     if (isInitialized) {
       configuration = configuration.copyWith(volume: volume);
+      channel.setVolume(volume);
     }
   }
 
   void stop() {
     if (isInitialized) {
-      _playerstatestream.add(PlayerState.stopped);
       configuration = configuration.copyWith(isPlaying: false);
+      channel.stop();
     }
   }
 
-  void dispose() {
+  @override
+  void onClose() {
     _playbackDurationstreamSubscription?.cancel();
     _durationstream.close();
     _positionstream.close();
@@ -396,7 +440,7 @@ class FlutterFlexPlayerController {
     Navigator.push(
       context,
       PageRouteBuilder<dynamic>(
-        pageBuilder: (BuildContext context, _, __) => FullScreenView(
+        pageBuilder: (BuildContext context, _, __) => _FullScreenView(
           controller: this,
           configuration: configuration,
         ),
@@ -797,15 +841,6 @@ class FlutterFlexPlayerController {
   }
 
   void setQuality(String quality) async {
-    if (source is YouTubeFlexPlayerSource) {
-      channel.setQuality(quality);
-    }
-    if (source is NetworkFlexPlayerSource) {
-      final video = videosList.firstWhere(
-        (element) => element.quality == quality,
-      );
-      final url = video.url.toString();
-      reload();
-    }
+    channel.setQuality(quality);
   }
 }

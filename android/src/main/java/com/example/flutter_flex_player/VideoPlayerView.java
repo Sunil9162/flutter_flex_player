@@ -8,34 +8,31 @@ import android.net.Uri;
 import androidx.annotation.NonNull;
 import androidx.annotation.OptIn;
 import androidx.media3.common.MediaItem;
+import androidx.media3.common.MimeTypes;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.common.Timeline;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.datasource.DefaultDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.hls.HlsMediaSource;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.MergingMediaSource;
 import androidx.media3.exoplayer.source.ProgressiveMediaSource;
-import androidx.media3.exoplayer.source.TrackGroupArray;
 import androidx.media3.ui.PlayerView;
 
 import android.os.Handler;
 import android.util.Log;
 import android.view.Surface;
-import androidx.media3.common.TrackGroup;
-import androidx.media3.common.Format;
-import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
-import androidx.media3.common.TrackSelectionOverride;
 
 
 import com.google.gson.Gson;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 
 import io.flutter.plugin.common.EventChannel;
 
@@ -46,14 +43,19 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
     private final Context context;
     private ArrayList<VideoData> videoData;
     private EventChannel.EventSink eventSink;
-    private final Handler handler;
+    private Handler handler;
     private Runnable positionRunnable;
     private static final long POSITION_UPDATE_INTERVAL_MS = 1000;
-    private PlayerView playerView;
+    private Map<Object, Object> arguments;
+    private FileType fileType;
 
     @OptIn(markerClass = UnstableApi.class)
     private VideoPlayerView(Context context) {
         this.context = context;
+        initPlayer(context);
+    }
+
+    private void initPlayer(Context context) {
         handler = new Handler();
         if (player == null) {
             player = new ExoPlayer.Builder(context).build();
@@ -73,7 +75,7 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
                             if (player.getPlayWhenReady()) {
                                 map.put("state", "playing");  // Playing
                             } else {
-                                    map.put("state", "paused");  // Paused
+                                map.put("state", "paused");  // Paused
                             }
                             break;
                         case Player.STATE_ENDED:
@@ -91,7 +93,7 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
                 @Override
                 public void onIsPlayingChanged(boolean isPlaying) {
                     Map<Object, Object> map = new HashMap<>();
-                    if(player.getPlaybackState() != Player.STATE_BUFFERING) {
+                    if (player.getPlaybackState() != Player.STATE_BUFFERING) {
                         map.put("state", isPlaying ? "playing" : "paused");
                     }
                     sendMapData(map);
@@ -99,12 +101,12 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
 
                 @Override
                 public void onPlayerError(@NonNull PlaybackException error) {
-                    Map<Object, Object> map = Map.of("error", error.getMessage());
+                    Map<Object, Object> map = new HashMap<>();
+                    map.put("error", error.getMessage());
                     sendMapData(map);
                 }
             });
             startPositionUpdate();
-
         }
     }
 
@@ -112,15 +114,13 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
         positionRunnable = new Runnable() {
             @Override
             public void run() {
-                if (eventSink != null && player != null) {
+                if (eventSink != null && player != null && player.getPlaybackState() != Player.STATE_ENDED) {
                     long duration = player.getDuration();
                     long position = player.getCurrentPosition();
-
-                    Map<Object, Object> map = Map.of(
-                            "position", position,
-                            "duration", duration,
-                            "buffered", player.getBufferedPosition()
-                    );
+                    Map<Object, Object> map = new HashMap<>();
+                    map.put("position", position);
+                    map.put("duration", duration);
+                    map.put("buffered", player.getBufferedPosition());
                     // Send position and duration to the Flutter side
                     sendMapData(map);
                     // Post the runnable again to keep updating position
@@ -142,11 +142,10 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
 
     private void notifyPlayerTimeChanged(@NonNull Timeline timeline) {
         if (eventSink != null && player != null) {
-            Map<Object, Object> map = Map.of(
-                    "duration", player.getDuration(),
-                    "position", player.getCurrentPosition(),
-                    "buffered", player.getBufferedPosition()
-            );
+            Map<Object, Object> map = new HashMap<>();
+            map.put("position", player.getCurrentPosition());
+            map.put("duration", player.getDuration());
+            map.put("buffered", player.getBufferedPosition());
             sendMapData(map);
         }
     }
@@ -172,7 +171,7 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
         if (eventSink != null) {
             Log.d("PlayerView", "Sending event: " + event.toString());
             handler.post(() -> eventSink.success(event));
-        }else {
+        } else {
             Log.d("PlayerView", "EventSink is null");
         }
     }
@@ -201,11 +200,16 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
             return;
         }
         try {
+            if (player == null) {
+                initPlayer(this.context);
+            }
+            this.arguments = arguments;
             sendInitializationEvent(InitializationEvent.initializing);
             Log.d("PlayerView", "Loading player");
             this.videoData = new ArrayList<>();
             ArrayList<Map<Object, Object>> videoData = (ArrayList<Map<Object, Object>>) arguments.get("videoData");
             assert videoData != null;
+            this.videoData.clear();
             for (Map<Object, Object> video : videoData) {
                 this.videoData.add(VideoData.fromJson(video));
             }
@@ -222,10 +226,11 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
             player.setPlayWhenReady(autoPlay);
             player.setRepeatMode(loop ? ExoPlayer.REPEAT_MODE_ALL : ExoPlayer.REPEAT_MODE_OFF);
             player.setVolume((float) volume);
-            player.setVolume(mute?0:1);
+            player.setVolume(mute ? 0 : 1);
             player.setPlaybackSpeed((float) playbackSpeed);
             player.seekTo(position);
-            initializePlayer();
+            fileType = FileType.values()[(Integer) arguments.get("type")];
+            initializePlayer((Integer) arguments.get("type"));
         } catch (Exception e) {
             sendInitializationEvent(InitializationEvent.uninitialized);
             Log.e("PlayerView", "Error loading player: " + e.getMessage());
@@ -233,13 +238,53 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
     }
 
     @OptIn(markerClass = UnstableApi.class)
-    private void initializePlayer() {
+    private void initializePlayer(Integer type) {
         try {
-            String audioUrl = videoData.get(0).getAudioUrl();
-            String videoUrl = videoData.get(0).getVideoUrl();
-            playWithAudioAndVideo(videoUrl, audioUrl);
-            sendInitializationEvent(InitializationEvent.initialized);
-        } catch (Exception e){
+            FileType filetype = FileType.values()[type];
+            if (filetype == FileType.file) {
+                playWithFile();
+            } else if (filetype == FileType.url) {
+                playWithUrl();
+            } else {
+                String audioUrl = videoData.get(0).getAudioUrl();
+                String videoUrl = videoData.get(0).getVideoUrl();
+                playWithAudioAndVideo(videoUrl, audioUrl);
+                sendInitializationEvent(InitializationEvent.initialized);
+            }
+        } catch (Exception e) {
+            sendInitializationEvent(InitializationEvent.uninitialized);
+        }
+    }
+
+    @OptIn(markerClass = UnstableApi.class)
+    private void playWithUrl() {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                Uri fileUri = Uri.parse(this.videoData.get(0).getVideoUrl());
+                MediaSource fileSource = buildMediaSource(fileUri);
+                player.setMediaSource(fileSource);
+                player.prepare();
+                player.play();
+                sendInitializationEvent(InitializationEvent.initialized);
+            }
+        } catch (Exception e) {
+            sendInitializationEvent(InitializationEvent.uninitialized);
+        }
+    }
+
+    @OptIn(markerClass = UnstableApi.class)
+    private void playWithFile() {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                File file = new File(String.valueOf(this.videoData.get(0).getVideoUrl()));
+                Uri fileUri = Uri.parse(file.getPath());
+                MediaSource fileSource = buildMediaSource(fileUri);
+                player.setMediaSource(fileSource);
+                player.prepare();
+                player.play();
+                sendInitializationEvent(InitializationEvent.initialized);
+            }
+        } catch (Exception e) {
             sendInitializationEvent(InitializationEvent.uninitialized);
         }
     }
@@ -265,8 +310,29 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
 
     @OptIn(markerClass = UnstableApi.class)
     private MediaSource buildMediaSource(Uri uri) {
-        return new ProgressiveMediaSource.Factory(new DefaultDataSource.Factory(context))
-                .createMediaSource(MediaItem.fromUri(uri));
+
+        if (uri.toString().endsWith(".m3u8")) {
+            Log.e("PlayerView", "HLS Media Source");
+            // HLS Media Source
+            MediaItem.Builder builder = new MediaItem.Builder().setUri(uri);
+            //            switch (streamingFormat) {
+//                case SMOOTH:
+//                    mimeType = MimeTypes.APPLICATION_SS;
+//                    break;
+//                case DYNAMIC_ADAPTIVE:
+//                    mimeType = MimeTypes.APPLICATION_MPD;
+//                    break;
+//                case HTTP_LIVE:
+            String mimeType = MimeTypes.APPLICATION_M3U8;
+//                    break;
+            builder.setMimeType(mimeType);
+            return new HlsMediaSource.Factory(new DefaultDataSource.Factory(context))
+                    .createMediaSource(builder.build());
+        } else {
+            // Progressive Media Source for other formats (e.g., MP4)
+            return new ProgressiveMediaSource.Factory(new DefaultDataSource.Factory(context))
+                    .createMediaSource(MediaItem.fromUri(uri));
+        }
     }
 
     public void releasePlayer() {
@@ -286,7 +352,7 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
         if (player != null) {
             notifyPlayerTimeChanged(player.getCurrentTimeline());
         }
-        Log.d("PlayerView","EventSink Added");
+        Log.d("PlayerView", "EventSink Added");
     }
 
     @Override
@@ -295,6 +361,7 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
         stopPositionUpdate();
     }
 
+    @OptIn(markerClass = UnstableApi.class)
     public void setQuality(String quality) {
         VideoData newVideo = null;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
@@ -304,10 +371,24 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
                     .orElse(null);
         }
         if (newVideo != null) {
-            String audioUrl = newVideo.getAudioUrl();
-            String videoUrl = newVideo.getVideoUrl();
-            // Call the method to switch the quality without pausing
-            switchQualityWithoutPause(videoUrl, audioUrl);
+            if (fileType == FileType.youtube) {
+                String audioUrl = newVideo.getAudioUrl();
+                String videoUrl = newVideo.getVideoUrl();
+                // Call the method to switch the quality without pausing
+                switchQualityWithoutPause(videoUrl, audioUrl);
+            } else if (fileType == FileType.file) {
+                File file = new File(String.valueOf(newVideo.getVideoUrl()));
+                Uri fileUri = Uri.parse(file.getPath());
+                MediaSource fileSource = buildMediaSource(fileUri);
+                player.setMediaSource(fileSource, false);
+                player.prepare();
+            } else {
+                String videoUrl = newVideo.getVideoUrl();
+                Uri fileUri = Uri.parse(videoUrl);
+                MediaSource fileSource = buildMediaSource(fileUri);
+                player.setMediaSource(fileSource, false);
+                player.prepare();
+            }
         }
     }
 
@@ -319,7 +400,6 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
         MergingMediaSource newMergedSource = new MergingMediaSource(newVideoSource, newAudioSource);
 
         // Save the current position and play state
-        long currentPosition = player.getCurrentPosition();
         boolean wasPlaying = player.isPlaying();
 
         // Set the new media source and keep the playback state (don't call prepare)
@@ -331,4 +411,8 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
         }
     }
 
+
+    public void reloadPlayer() {
+        loadPlayer(this.arguments);
+    }
 }

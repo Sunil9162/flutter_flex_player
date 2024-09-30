@@ -25,13 +25,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         //   // "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4",
         //   "https://moctobpltc-i.akamaihd.net/hls/live/571329/eight/playlist.m3u8",
         // ),
-        // YouTubeFlexPlayerSource(
-        //   "Nq2wYlWFucg",
-        //   isLive: true,
-        // ),
-        // PlayerSources.network(
-        //     "https://live-par-2-abr.livepush.io/vod/bigbuckbunnyclip.mp4"),
-        PlayerSources.youtube(videoId: "e6OOEFN4gSQ"),
+        PlayerSources.network(
+            "https://moctobpltc-i.akamaihd.net/hls/live/571329/eight/playlist.m3u8"),
+        // PlayerSources.youtube(videoId: "e6OOEFN4gSQ"),
         autoPlay: true,
         loop: true,
       );

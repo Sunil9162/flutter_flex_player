@@ -1,22 +1,16 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
+part of '../../flutter_flex_player_controller.dart';
 
-class NativePlayerView extends StatefulWidget {
-  final FlutterFlexPlayerController? flexPlayerController;
-  const NativePlayerView({
-    super.key,
-    this.flexPlayerController,
+class _NativePlayerView extends StatefulWidget {
+  final FlutterFlexPlayerController flexPlayerController;
+  const _NativePlayerView({
+    required this.flexPlayerController,
   });
 
   @override
-  State<NativePlayerView> createState() => _NativePlayerViewState();
+  State<_NativePlayerView> createState() => _NativePlayerViewState();
 }
 
-class _NativePlayerViewState extends State<NativePlayerView> {
+class _NativePlayerViewState extends State<_NativePlayerView> {
   @override
   Widget build(BuildContext context) {
     if (defaultTargetPlatform == TargetPlatform.iOS) {
@@ -35,9 +29,9 @@ class _NativePlayerViewState extends State<NativePlayerView> {
         );
       },
       onCreatePlatformView: (params) {
-        return PlatformViewsService.initSurfaceAndroidView(
+        return PlatformViewsService.initExpensiveAndroidView(
           id: params.id,
-          viewType: params.viewType,
+          viewType: "player",
           layoutDirection: TextDirection.ltr,
           onFocus: () {
             params.onFocusChanged(true);
