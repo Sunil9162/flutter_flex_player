@@ -13,7 +13,11 @@ import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.common.Timeline;
 import androidx.media3.common.util.UnstableApi;
+import androidx.media3.common.util.Util;
+import androidx.media3.datasource.DataSource;
 import androidx.media3.datasource.DefaultDataSource;
+import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.hls.HlsMediaSource;
 import androidx.media3.exoplayer.source.MediaSource;
@@ -313,23 +317,14 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
 
         if (uri.toString().endsWith(".m3u8")) {
             Log.e("PlayerView", "HLS Media Source");
-            // HLS Media Source
-            MediaItem.Builder builder = new MediaItem.Builder().setUri(uri);
-            //            switch (streamingFormat) {
-//                case SMOOTH:
-//                    mimeType = MimeTypes.APPLICATION_SS;
-//                    break;
-//                case DYNAMIC_ADAPTIVE:
-//                    mimeType = MimeTypes.APPLICATION_MPD;
-//                    break;
-//                case HTTP_LIVE:
-            String mimeType = MimeTypes.APPLICATION_M3U8;
-//                    break;
-            builder.setMimeType(mimeType);
-            return new HlsMediaSource.Factory(new DefaultDataSource.Factory(context))
-                    .createMediaSource(builder.build());
+
+            DataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
+                    .setConnectTimeoutMs(10_000)   // Set connection timeout
+                    .setReadTimeoutMs(10_000)      // Set read timeout
+                    .setAllowCrossProtocolRedirects(true);  // Allow redirects if needed
+            HlsMediaSource.Factory hlsFactory = new HlsMediaSource.Factory(dataSourceFactory);
+            return hlsFactory.createMediaSource(MediaItem.fromUri(uri));
         } else {
-            // Progressive Media Source for other formats (e.g., MP4)
             return new ProgressiveMediaSource.Factory(new DefaultDataSource.Factory(context))
                     .createMediaSource(MediaItem.fromUri(uri));
         }

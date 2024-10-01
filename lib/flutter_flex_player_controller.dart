@@ -285,7 +285,7 @@ class FlutterFlexPlayerController extends GetxController {
           for (var element in data) {
             videosList.add(
               VideoData(
-                url: element['url'] ?? "",
+                url: (element['url'] ?? "").toFullUrl(source.url),
                 quality: element['resolution'].toString().split("x").last,
               ),
             );
