@@ -13,6 +13,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
 import 'package:flutter_flex_player/flutter_flex_player_method_channel.dart';
 import 'package:flutter_flex_player/helpers/configuration.dart';
+import 'package:flutter_flex_player/helpers/exceptions.dart';
 import 'package:flutter_flex_player/helpers/extensions.dart';
 import 'package:flutter_flex_player/helpers/flex_player_sources.dart';
 import 'package:flutter_flex_player/helpers/streams.dart';
@@ -25,13 +26,16 @@ import 'package:rxdart/rxdart.dart';
 import 'controllers/youtube_controller.dart';
 import 'helpers/enums.dart';
 
+export 'package:youtube_explode_dart/youtube_explode_dart.dart';
+
 export 'helpers/enums.dart';
 
 part './controllers/NativePlayer/native_player_view.dart';
 part './pages/full_screen_page.dart';
 
 class FlutterFlexPlayerController extends GetxController {
-  MethodChannelFlutterFlexPlayer channel = MethodChannelFlutterFlexPlayer();
+  final MethodChannelFlutterFlexPlayer _channel =
+      MethodChannelFlutterFlexPlayer();
   StreamSubscription? eventStreamSubScription;
   static FlutterFlexPlayerController get instance =>
       Get.isRegistered<FlutterFlexPlayerController>()
@@ -46,13 +50,12 @@ class FlutterFlexPlayerController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    _channel.setupChannels(this);
     nativePlayer.value = RepaintBoundary(
       child: _NativePlayerView(
         flexPlayerController: this,
       ),
     );
-    channel.setupChannels(this);
-    startListner();
   }
 
   startListner() {
@@ -62,7 +65,7 @@ class FlutterFlexPlayerController extends GetxController {
       _durationstream.add(Duration.zero);
       eventStreamSubScription?.cancel();
       eventStreamSubScription =
-          channel.eventChannel.receiveBroadcastStream().listen(
+          _channel.eventChannel.receiveBroadcastStream().listen(
         (event) {
           parseEvent(event);
         },
@@ -83,7 +86,7 @@ class FlutterFlexPlayerController extends GetxController {
         },
       );
     } catch (e) {
-      log(e.toString());
+      disposePlayer();
     }
   }
 
@@ -96,27 +99,32 @@ class FlutterFlexPlayerController extends GetxController {
       _playbackDurationStream.stream;
 
   parseEvent(dynamic event) {
-    final data = Map<String, dynamic>.from(jsonDecode(event));
-    if (data.containsKey('state')) {
-      final state = _mapStateFromString(data['state']);
-      playerStateSink.add(state);
-      isPlaying = state == PlayerState.playing;
-    }
-    if (data.containsKey('duration') || data.containsKey("position")) {
-      final duration = Duration(milliseconds: data['duration']);
-      final position = Duration(milliseconds: data['position']);
-      final bufferedPosition = Duration(milliseconds: data['buffered'] ?? 0);
-      durationSink.add(duration);
-      this.duration = duration;
-      positionSink.add(position);
-      this.position = position;
-      bufferSink.add(bufferedPosition);
-    }
-    if (data.containsKey('initializationEvent')) {
-      final initalization =
-          _mapInitializationEventFromString(data['initializationEvent']);
-      _initializationsink.add(initalization);
-      isInitialized = initalization == InitializationEvent.initialized;
+    try {
+      final data = Map<String, dynamic>.from(jsonDecode(event));
+      if (data.containsKey('state')) {
+        final state = _mapStateFromString(data['state']);
+        playerStateSink.add(state);
+        isPlaying = state == PlayerState.playing;
+      }
+      if (data.containsKey('duration') || data.containsKey("position")) {
+        final duration = Duration(milliseconds: data['duration']);
+        final position = Duration(milliseconds: data['position']);
+        final bufferedPosition = Duration(milliseconds: data['buffered'] ?? 0);
+        durationSink.add(duration);
+        this.duration = duration;
+        positionSink.add(position);
+        this.position = position;
+        bufferSink.add(bufferedPosition);
+      }
+      if (data.containsKey('initializationEvent')) {
+        final initalization =
+            _mapInitializationEventFromString(data['initializationEvent']);
+        _initializationsink.add(initalization);
+        isInitialized = initalization == InitializationEvent.initialized;
+      }
+    } catch (e) {
+      log("Error: $e");
+      disposePlayer();
     }
   }
 
@@ -163,6 +171,14 @@ class FlutterFlexPlayerController extends GetxController {
       _initializationstream.sink;
   Stream<InitializationEvent> get onInitialized => _initializationstream.stream;
 
+  /// Stream of [VideoData]
+  final BehaviorSubject<VideoData> _currentPlayingStream =
+      BehaviorSubject<VideoData>();
+  StreamSink<VideoData> get _currentPlayingSink => _currentPlayingStream.sink;
+  Stream<VideoData> get currentPlayingStream => _currentPlayingStream.stream;
+
+  VideoData? getCurrentPlaying;
+
   /// Returns the current position of the video player.
   Duration position = Duration.zero;
 
@@ -207,30 +223,17 @@ class FlutterFlexPlayerController extends GetxController {
 
   /// Returns whether the video player is muted.
   bool get isMuted {
-    // if (isInitialized) {
-    //   if (isNativePlayer.value) {
-    //     return _nativePlayerController!.isMuted;
-    //   }
-    //   return _videoPlayerController.value.volume == 0;
-    // }
+    if (isInitialized) {
+      return volume == 0;
+    }
     return false;
   }
 
   /// Returns the volume of the video player.
-  double get volume {
-    // if (isInitialized) {
-    //   return _videoPlayerController.value.volume;
-    // }
-    return 0;
-  }
+  double volume = 0;
 
   /// Returns the playback speed of the video player.
-  double get playbackSpeed {
-    // if (isInitialized) {
-    //   return _videoPlayerController.value.playbackSpeed;
-    // }
-    return 0;
-  }
+  double playbackSpeed = 0;
 
   /// On PlayBack Speed Change Stream
   final BehaviorSubject<double> _playbackSpeedStream =
@@ -251,7 +254,7 @@ class FlutterFlexPlayerController extends GetxController {
 
   /// Load the video player with the given [source].
 
-  void load(
+  Future<void> load(
     FlexPlayerSource source, {
     bool autoPlay = false,
     bool loop = false,
@@ -261,7 +264,7 @@ class FlutterFlexPlayerController extends GetxController {
     Duration? position,
     VoidCallback? onInitialized,
   }) async {
-    channel.setupChannels(this);
+    _channel.setupChannels(this);
     configuration = configuration.copyWith(
       autoPlay: autoPlay,
       loop: loop,
@@ -270,7 +273,10 @@ class FlutterFlexPlayerController extends GetxController {
       position: position,
       isPlaying: autoPlay,
     );
+    this.playbackSpeed = playbackSpeed;
+    this.volume = volume;
     _initializationstream.add(InitializationEvent.initializing);
+    playerStateSink.add(PlayerState.ended);
     try {
       _source = source;
       if (source is AssetFlexPlayerSource) {
@@ -309,42 +315,54 @@ class FlutterFlexPlayerController extends GetxController {
         final flexYoutubecontroller = FlexYoutubeController.instance;
         final isNotLive =
             await FlexYoutubeController.instance.isNotLive(source.videoId);
-        if (isNotLive) {
-          await flexYoutubecontroller
-              .getVideoDetails(source.videoId)
-              .then((value) {
-            qualities.value = flexYoutubecontroller.videosList
-                .map((e) => e.quality)
-                .toSet()
-                .toList();
-            videosList.addAll(flexYoutubecontroller.videosList.value);
-            selectedQuality = flexYoutubecontroller.videosList.first.quality;
-          });
-          type = FileType.youtube;
-        } else {
-          await flexYoutubecontroller
-              .getVideoDetails(videoId, isLive: true)
-              .then(
-            (value) {
+        try {
+          if (isNotLive) {
+            await flexYoutubecontroller
+                .getVideoDetails(source.videoId)
+                .then((value) {
               qualities.value = flexYoutubecontroller.videosList
                   .map((e) => e.quality)
                   .toSet()
                   .toList();
-              selectedQuality = flexYoutubecontroller.videosList.first.quality;
               videosList.addAll(flexYoutubecontroller.videosList.value);
-            },
-          );
-          type = FileType.url;
+            });
+            type = FileType.youtube;
+          } else {
+            await flexYoutubecontroller
+                .getVideoDetails(videoId, isLive: true)
+                .then(
+              (value) {
+                qualities.value = flexYoutubecontroller.videosList
+                    .map((e) => e.quality)
+                    .toSet()
+                    .toList();
+                videosList.addAll(flexYoutubecontroller.videosList.value);
+              },
+            );
+            type = FileType.url;
+          }
+        } catch (e) {
+          _initializationstream.add(InitializationEvent.uninitialized);
+          rethrow;
         }
       }
       final ids = videosList.map((e) => e.quality).toSet();
       videosList.retainWhere((x) => ids.remove(x.quality));
+      videosList.sort((a, b) {
+        return int.parse(a.quality.split("p").first) -
+            int.parse(b.quality.split("p").first);
+      });
       qualities.value = videosList.map((e) => e.quality).toSet().toList();
-      qualities.sort((a, b) => a.compareTo(b));
       startListner();
-      selectedQuality = videosList.first.quality;
-      await channel.load(
+      final video =
+          videosList.firstWhereOrNull((e) => e.quality.contains("360")) ??
+              videosList.first;
+      selectedQuality = video.quality;
+      _currentPlayingSink.add(video);
+      getCurrentPlaying = video;
+      await _channel.load(
         videoData: videosList,
+        index: videosList.indexWhere((e) => e.quality == video.quality),
         autoPlay: autoPlay,
         loop: loop,
         mute: mute,
@@ -352,37 +370,30 @@ class FlutterFlexPlayerController extends GetxController {
         playbackSpeed: playbackSpeed,
         type: type,
       );
-    } catch (e) {
+    } on Exception catch (e) {
       _initializationstream.add(InitializationEvent.uninitialized);
-    }
-  }
-
-  void reload() async {
-    _initializationstream.add(InitializationEvent.initializing);
-    try {
-      channel.reload();
-    } catch (e) {
-      _initializationstream.add(InitializationEvent.uninitialized);
+      log("Error in Loading: $e");
+      throw PlayerError(e.toString());
     }
   }
 
   void pause() {
     if (isInitialized) {
       configuration = configuration.copyWith(isPlaying: false);
-      channel.pause();
+      _channel.pause();
     }
   }
 
   void play() {
     if (isInitialized) {
       configuration = configuration.copyWith(isPlaying: true);
-      channel.play();
+      _channel.play();
     }
   }
 
   void seekTo(Duration position) async {
     if (isInitialized) {
-      channel.seekTo(position);
+      _channel.seekTo(position);
     }
   }
 
@@ -400,34 +411,40 @@ class FlutterFlexPlayerController extends GetxController {
 
   void setPlaybackSpeed(double speed) {
     if (isInitialized) {
+      playbackSpeed = speed;
       configuration = configuration.copyWith(playbackSpeed: speed);
-      channel.setPlaybackSpeed(speed);
+      _channel.setPlaybackSpeed(speed);
     }
   }
 
   void setVolume(double volume) {
     if (isInitialized) {
       configuration = configuration.copyWith(volume: volume);
-      channel.setVolume(volume);
+      _channel.setVolume(volume);
     }
   }
 
   void stop() {
     if (isInitialized) {
       configuration = configuration.copyWith(isPlaying: false);
-      channel.stop();
+      _channel.stop();
     }
   }
 
   @override
   void onClose() {
+    disposePlayer();
+    super.onClose();
+  }
+
+  disposePlayer() {
+    _channel.dispose();
     _playbackDurationstreamSubscription?.cancel();
     _durationstream.close();
     _positionstream.close();
     _bufferstream.close();
     _qualityStream.close();
     _playbackSpeedStream.close();
-    channel.dispose();
   }
 
   RxBool isFullScreen = false.obs;
@@ -841,6 +858,12 @@ class FlutterFlexPlayerController extends GetxController {
   }
 
   void setQuality(String quality) async {
-    channel.setQuality(quality);
+    final video = videosList.firstWhereOrNull((e) => e.quality == quality);
+    if (video == null) {
+      throw Exception("No video found for format");
+    }
+    _channel.setQuality(quality);
+    _currentPlayingSink.add(video);
+    getCurrentPlaying = video;
   }
 }

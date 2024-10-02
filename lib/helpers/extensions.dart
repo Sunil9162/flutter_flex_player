@@ -21,7 +21,7 @@ extension UrlConverter on String {
     }
     Uri uri = Uri.parse(originalM3u8Url);
     String baseUrl =
-        '${uri.scheme}://${uri.authority}${uri.pathSegments.take(uri.pathSegments.length - 1).join('/')}';
+        '${uri.scheme}://${uri.authority}/${uri.pathSegments.take(uri.pathSegments.length - 1).join('/')}';
 
     // Check if the URL already contains the protocol (is a full URL)
     if (!startsWith('http://') && !startsWith('https://')) {

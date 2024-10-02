@@ -4,7 +4,8 @@ import 'package:flutter_flex_player/flutter_flex_player.dart';
 import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
-  const VideoPlayerScreen({super.key});
+  final FlexPlayerSource? source;
+  const VideoPlayerScreen({super.key, this.source});
 
   @override
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
@@ -25,9 +26,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         //   // "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4",
         //   "https://moctobpltc-i.akamaihd.net/hls/live/571329/eight/playlist.m3u8",
         // ),
-        PlayerSources.network(
-            "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"),
-        // PlayerSources.youtube(videoId: "Nq2wYlWFucg"),
+        // PlayerSources.network(
+        //     "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"),
+        PlayerSources.youtube(videoId: "zqDLrRsTplk"),
+        // widget.source,
         autoPlay: true,
         loop: true,
       );
@@ -52,6 +54,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         children: [
           FlutterFlexPlayer(
             _controller,
+            aspectRatio: 9 / 16,
           ),
           const SizedBox(
             height: 50,

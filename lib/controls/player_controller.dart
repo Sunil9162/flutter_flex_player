@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -73,6 +74,10 @@ class PlayerController extends GetxController with GetTickerProviderStateMixin {
       } else {
         _playPauseController.forward();
       }
+      if (state == PlayerState.buffering) {
+        isControlsVisible.value = true;
+        _animationController.forward();
+      }
     });
 
     _playPauseController.forward();
@@ -82,6 +87,9 @@ class PlayerController extends GetxController with GetTickerProviderStateMixin {
     }
     startTimer();
     _isInitDone = true;
+    ever(isControlsVisible, (callback) {
+      log("ControlVisible: ${isControlsVisible.value}");
+    });
   }
 
   void startTimer() {

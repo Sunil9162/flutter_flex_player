@@ -15,6 +15,8 @@ class FlexPlayerConfiguration {
   final Duration? position;
   final bool isPlaying;
   final bool autoQuality;
+  final Widget? errorWidget;
+  final bool showControlsOnError;
 
   FlexPlayerConfiguration({
     this.isFullScreen = false,
@@ -31,6 +33,8 @@ class FlexPlayerConfiguration {
     this.position,
     this.isPlaying = false,
     this.autoQuality = true,
+    this.errorWidget,
+    this.showControlsOnError = true,
   });
 
   FlexPlayerConfiguration copyWith({
@@ -48,6 +52,8 @@ class FlexPlayerConfiguration {
     Duration? position,
     bool? isPlaying,
     bool? autoQuality,
+    Widget? errorWidet,
+    bool? showControlsOnError,
   }) {
     return FlexPlayerConfiguration(
       isFullScreen: isFullScreen ?? this.isFullScreen,
@@ -65,6 +71,8 @@ class FlexPlayerConfiguration {
       position: position ?? this.position,
       isPlaying: isPlaying ?? this.isPlaying,
       autoQuality: autoQuality ?? this.autoQuality,
+      errorWidget: errorWidet ?? errorWidget,
+      showControlsOnError: showControlsOnError ?? this.showControlsOnError,
     );
   }
 }

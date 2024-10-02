@@ -1,11 +1,10 @@
-import 'dart:developer';
-
 import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_flex_player/controls/player_controller.dart';
 import 'package:flutter_flex_player/flutter_flex_player_controller.dart';
 import 'package:flutter_flex_player/helpers/extensions.dart';
 import 'package:flutter_flex_player/helpers/streams.dart';
+import 'package:get/state_manager.dart';
 
 class PlayerControls extends StatefulWidget {
   final FlutterFlexPlayerController controller;
@@ -35,7 +34,9 @@ class _PlayerControlsState extends State<PlayerControls> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        playerController.toggleControlsVisibility();
+        if (widget.controller.isInitialized) {
+          playerController.toggleControlsVisibility();
+        }
       },
       child: AspectRatio(
         aspectRatio: widget.controller.configuration.aspectRatio,
@@ -144,11 +145,15 @@ class _PlayerControlsState extends State<PlayerControls> {
             height: 30,
             width: 30,
             alignment: Alignment.center,
-            child: const Icon(
-              Icons.fullscreen,
-              color: Colors.white,
-              size: 20,
-            ),
+            child: Obx(() {
+              return Icon(
+                widget.controller.isFullScreen.value
+                    ? Icons.fullscreen_exit_rounded
+                    : Icons.fullscreen_rounded,
+                color: Colors.white,
+                size: 20,
+              );
+            }),
           ),
         ),
       ),
@@ -208,19 +213,6 @@ class _PlayerControlsState extends State<PlayerControls> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          IconButton(
-            icon: const Icon(
-              Icons.replay_10,
-              color: Colors.white,
-              size: 30,
-            ),
-            onPressed: () {
-              playerController.player.seekTo(
-                playerController.player.position - const Duration(seconds: 10),
-              );
-            },
-          ),
-          (context.width * 0.1).widthBox,
           StreamBuilder<CombinedState>(
             key: const ValueKey("combinedStream"),
             stream: playerController.combinedStateController.stream,
@@ -235,60 +227,98 @@ class _PlayerControlsState extends State<PlayerControls> {
               // Access InitializationEvent and PlayerState from the combined data
               final initializationEvent = combinedState.initializationEvent;
               final playerState = combinedState.playerState;
-              return IgnorePointer(
-                ignoring:
-                    initializationEvent == InitializationEvent.initializing ||
-                        playerState == PlayerState.buffering,
-                child: IconButton(
-                  icon: Builder(builder: (_) {
-                    if (initializationEvent ==
-                        InitializationEvent.initializing) {
-                      return const CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation(Colors.white),
-                      );
-                    }
-                    if (initializationEvent ==
-                        InitializationEvent.uninitialized) {
-                      return const Icon(
-                        Icons.replay,
+              final isInitalized =
+                  initializationEvent == InitializationEvent.initialized;
+              return Row(
+                children: [
+                  if (isInitalized)
+                    IconButton(
+                      icon: const Icon(
+                        Icons.replay_10,
                         color: Colors.white,
-                        size: 35,
+                        size: 30,
+                      ),
+                      onPressed: () {
+                        playerController.player.seekTo(
+                          playerController.player.position -
+                              const Duration(seconds: 10),
+                        );
+                      },
+                    ),
+                  (context.width * 0.1).widthBox,
+                  IgnorePointer(
+                    ignoring: initializationEvent ==
+                            InitializationEvent.initializing ||
+                        playerState == PlayerState.buffering ||
+                        initializationEvent ==
+                            InitializationEvent.uninitialized,
+                    child: Builder(builder: (_) {
+                      if (initializationEvent ==
+                          InitializationEvent.initializing) {
+                        return const CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation(Colors.white),
+                        );
+                      }
+                      if (initializationEvent ==
+                          InitializationEvent.uninitialized) {
+                        if (widget.controller.configuration.errorWidget !=
+                            null) {
+                          return widget.controller.configuration.errorWidget ??
+                              const SizedBox();
+                        }
+                        return const Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.warning_rounded,
+                              color: Colors.red,
+                              size: 35,
+                            ),
+                            Text(
+                              "Error Playing Video",
+                              style: TextStyle(
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                      if (playerState == PlayerState.buffering) {
+                        return const CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation(Colors.white),
+                        );
+                      }
+                      return IconButton(
+                        onPressed: () {
+                          if (widget.controller.isInitialized) {
+                            playerController.togglePlayPause();
+                          }
+                        },
+                        icon: AnimatedIcon(
+                          icon: AnimatedIcons.pause_play,
+                          progress: playerController.playPauseController,
+                          color: Colors.white,
+                          size: 35,
+                        ),
                       );
-                    }
-                    if (playerState == PlayerState.buffering) {
-                      log("PlayerState: ${playerState.name}");
-                      return const CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation(Colors.white),
-                      );
-                    }
-                    return AnimatedIcon(
-                      icon: AnimatedIcons.pause_play,
-                      progress: playerController.playPauseController,
-                      color: Colors.white,
-                      size: 35,
-                    );
-                  }),
-                  onPressed: () {
-                    if (widget.controller.isInitialized) {
-                      playerController.togglePlayPause();
-                    } else {
-                      playerController.player.reload();
-                    }
-                  },
-                ),
-              );
-            },
-          ),
-          (context.width * 0.1).widthBox,
-          IconButton(
-            icon: const Icon(
-              Icons.forward_10,
-              color: Colors.white,
-              size: 30,
-            ),
-            onPressed: () {
-              playerController.player.seekTo(
-                playerController.player.position + const Duration(seconds: 10),
+                    }),
+                  ),
+                  (context.width * 0.1).widthBox,
+                  if (isInitalized)
+                    IconButton(
+                      icon: const Icon(
+                        Icons.forward_10,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                      onPressed: () {
+                        playerController.player.seekTo(
+                          playerController.player.position +
+                              const Duration(seconds: 10),
+                        );
+                      },
+                    ),
+                ],
               );
             },
           ),

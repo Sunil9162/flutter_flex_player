@@ -41,19 +41,32 @@ class FlexYoutubeController extends GetxController {
           );
         }
       } else {
-        final videoinfo = await getVideos(videoId);
-        if (videoinfo['videos']?.isNotEmpty ?? false) {
-          for (var element in videoinfo['videos']) {
-            final video = VideoData(
-              url: element['url'].toString(),
-              quality: element['height'].toString(),
-              format: element['ext'].toString(),
-              audioUrl:
-                  (videoinfo['audios'] as List).firstOrNull['url'].toString(),
+        final videoInfo = await yt.videos.streams.getManifest(videoId);
+        if (videoInfo.videoOnly.isNotEmpty) {
+          for (var element in videoInfo.videoOnly) {
+            videosList.add(
+              VideoData(
+                url: element.url.toString(),
+                quality: element.videoQualityLabel,
+                audioUrl: videoInfo.audioOnly.first.url.toString(),
+                format: element.videoQuality.name,
+              ),
             );
-            videosList.add(video);
           }
         }
+        // final videoinfo = await getVideos(videoId);
+        // if (videoinfo['videos']?.isNotEmpty ?? false) {
+        //   for (var element in videoinfo['videos']) {
+        //     final video = VideoData(
+        //       url: element['url'].toString(),
+        //       quality: element['height'].toString(),
+        //       format: element['ext'].toString(),
+        //       audioUrl:
+        //           (videoinfo['audios'] as List).firstOrNull['url'].toString(),
+        //     );
+        //     videosList.add(video);
+        //   }
+        // }
       }
       sortByQuality();
     } catch (e) {

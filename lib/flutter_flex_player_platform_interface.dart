@@ -17,6 +17,7 @@ abstract class FlutterFlexPlayerPlatform extends PlatformInterface {
 
   Future<void> load({
     required List<VideoData> videoData,
+    required int index,
     required bool autoPlay,
     required bool loop,
     required bool mute,

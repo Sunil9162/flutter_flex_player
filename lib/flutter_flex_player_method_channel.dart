@@ -19,6 +19,7 @@ class MethodChannelFlutterFlexPlayer extends FlutterFlexPlayerPlatform {
   void setupChannels(FlutterFlexPlayerController controller) {
     methodChannel = const MethodChannel('flutter_flex_player');
     eventChannel = const EventChannel(_eventChannelName);
+    controller.startListner();
   }
 
   @override
@@ -67,6 +68,7 @@ class MethodChannelFlutterFlexPlayer extends FlutterFlexPlayerPlatform {
   @override
   Future<void> load({
     required List<VideoData> videoData,
+    required int index,
     required bool autoPlay,
     required bool loop,
     required bool mute,
@@ -79,6 +81,7 @@ class MethodChannelFlutterFlexPlayer extends FlutterFlexPlayerPlatform {
     await methodChannel.invokeMethod(_methodLoad, {
       'videoData': videoData.map((e) => e.toMap()).toList(),
       'autoPlay': autoPlay,
+      'index': index,
       'loop': loop,
       'mute': mute,
       'volume': volume,

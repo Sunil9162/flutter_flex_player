@@ -121,7 +121,7 @@ public class PlayerView implements PlatformView, MethodChannel.MethodCallHandler
     }
 
     private void loadPlayer(@NonNull Map<Object, Object> arguments) {
-        try {
+        try { 
             this.videoPlayerView.loadPlayer(arguments);
         } catch (Exception e) {
             Log.e("PlayerView", "Error loading player: " + e.getMessage());
