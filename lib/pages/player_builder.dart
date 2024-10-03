@@ -64,7 +64,8 @@ class _PlayerBuilderState extends State<PlayerBuilder>
         Obx(() {
           return Center(
             child: AspectRatio(
-              aspectRatio: widget.configuration.aspectRatio,
+              aspectRatio: widget.configuration.aspectRatio ??
+                  widget._controller.playerAspectRatio.value,
               child: widget._controller.nativePlayer.value ?? const SizedBox(),
             ),
           );

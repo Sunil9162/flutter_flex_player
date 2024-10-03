@@ -12,7 +12,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 class FlutterFlexPlayer extends StatefulWidget {
   final FlutterFlexPlayerController controller;
   final bool autoDispose;
-  final double aspectRatio;
+  final double? aspectRatio;
   final VoidCallback? onFullScreeen;
   final Widget? errorWidget;
   final bool showControlsonError;
@@ -21,7 +21,7 @@ class FlutterFlexPlayer extends StatefulWidget {
     this.controller, {
     super.key,
     this.autoDispose = true,
-    this.aspectRatio = 16 / 9,
+    this.aspectRatio,
     this.onFullScreeen,
     this.errorWidget,
     this.showControlsonError = true,
@@ -57,7 +57,7 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
   @override
   void dispose() {
     if (widget.autoDispose) {
-      Get.delete<FlutterFlexPlayerController>();
+      _controller.disposePlayer();
     }
     Get.delete<PlayerController>(force: true);
     WakelockPlus.disable();
@@ -66,23 +66,35 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: MediaQuery.sizeOf(context).width,
-      child: AspectRatio(
-        aspectRatio: configuration.aspectRatio,
-        child: ColoredBox(
-          color: Colors.black,
-          child: Obx(() {
-            if (widget.controller.isFullScreen.value) {
-              return const SizedBox();
-            }
-            return PlayerBuilder(
-              controller: widget.controller,
-              configuration: configuration,
-              onFullScreeen: widget.onFullScreeen,
-            );
-          }),
-        ),
+    return Flexible(
+      child: SizedBox(
+        width: MediaQuery.sizeOf(context).width,
+        child: Obx(() {
+          return AspectRatio(
+            aspectRatio: configuration.aspectRatio ??
+                widget.controller.playerAspectRatio.value,
+            child: ColoredBox(
+              color: Colors.black,
+              child: widget.controller.isFullScreen.value
+                  ? const SizedBox()
+                  : PlayerBuilder(
+                      controller: widget.controller,
+                      configuration: configuration,
+                      onFullScreeen: widget.onFullScreeen,
+                    ),
+              // child: Obx(() {
+              //   if (widget.controller.isFullScreen.value) {
+              //     return const SizedBox();
+              //   }
+              //   return PlayerBuilder(
+              //     controller: widget.controller,
+              //     configuration: configuration,
+              //     onFullScreeen: widget.onFullScreeen,
+              //   );
+              // }),
+            ),
+          );
+        }),
       ),
     );
   }

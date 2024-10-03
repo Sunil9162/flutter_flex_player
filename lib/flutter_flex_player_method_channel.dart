@@ -19,7 +19,6 @@ class MethodChannelFlutterFlexPlayer extends FlutterFlexPlayerPlatform {
   void setupChannels(FlutterFlexPlayerController controller) {
     methodChannel = const MethodChannel('flutter_flex_player');
     eventChannel = const EventChannel(_eventChannelName);
-    controller.startListner();
   }
 
   @override

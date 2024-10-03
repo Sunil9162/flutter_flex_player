@@ -28,8 +28,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         // ),
         // PlayerSources.network(
         //     "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"),
-        PlayerSources.youtube(videoId: "zqDLrRsTplk"),
-        // widget.source,
+        // PlayerSources.youtube(videoId: "zqDLrRsTplk"),
+        widget.source!,
         autoPlay: true,
         loop: true,
       );
@@ -54,7 +54,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         children: [
           FlutterFlexPlayer(
             _controller,
-            aspectRatio: 9 / 16,
+            // aspectRatio: 16 / 9,
           ),
           const SizedBox(
             height: 50,

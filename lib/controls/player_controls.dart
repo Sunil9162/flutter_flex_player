@@ -39,7 +39,8 @@ class _PlayerControlsState extends State<PlayerControls> {
         }
       },
       child: AspectRatio(
-        aspectRatio: widget.controller.configuration.aspectRatio,
+        aspectRatio: widget.controller.configuration.aspectRatio ??
+            widget.controller.playerAspectRatio.value,
         child: AnimatedBuilder(
           animation: playerController.animationController,
           builder: (context, child) {

@@ -1,7 +1,11 @@
-import 'dart:math';
+import 'dart:developer';
+import 'dart:io';
 
 import 'package:example/video_player_screen.dart';
+import 'package:file_picker/file_picker.dart' as filepicker;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_flex_player/flutter_flex_player.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -18,31 +22,45 @@ class _HomePageState extends State<HomePage> {
         title: const Text('HomePage'),
       ),
       body: Center(
-        child: ElevatedButton(
-          onPressed: () {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const VideoPlayerScreen()));
-          },
-          child: const Text("Player Screen"),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const VideoPlayerScreen()));
+              },
+              child: const Text("Player Screen"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final file = await FilePicker.platform.pickFiles(
+                  type: filepicker.FileType.video,
+                  allowMultiple: false,
+                  onFileLoading: (p0) {
+                    log("Loading: ${p0.name}");
+                  },
+                );
+                log("Loaded");
+                if (file?.files.isEmpty ?? true) {
+                  return;
+                }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => VideoPlayerScreen(
+                      source: PlayerSources.file(File(file!.files.first.path!)),
+                    ),
+                  ),
+                );
+              },
+              child: const Text("Player Screen"),
+            ),
+          ],
         ),
       ),
     );
-  }
-}
-
-class WidgetCache {
-  static final Map<String, Widget> _cache = {};
-
-  static Widget getWidget(String key) {
-    if (!_cache.containsKey(key)) {
-      _cache[key] = Container(
-        color: Colors.red,
-        child: Text(
-          Random.secure().nextInt(100).toString(),
-          style: const TextStyle(color: Colors.black),
-        ),
-      );
-    }
-    return _cache[key]!;
   }
 }

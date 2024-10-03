@@ -12,6 +12,7 @@ import androidx.media3.common.MimeTypes;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.common.Timeline;
+import androidx.media3.common.VideoSize;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.common.util.Util;
 import androidx.media3.datasource.DataSource;
@@ -64,6 +65,16 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
         if (player == null) {
             player = new ExoPlayer.Builder(context).build();
             player.addListener(new Player.Listener() {
+
+                @Override
+                public void onVideoSizeChanged(@NonNull VideoSize size) {
+                    if (size.width != 0 && size.height != 0) {
+                        Map<Object, Object> map = new HashMap<>();
+                        map.put("width", size.width);
+                        map.put("height", size.height);
+                        sendMapData(map);
+                    }
+                }
                 @Override
                 public void onPlaybackStateChanged(int playbackState) {
                     Map<Object, Object> map = new HashMap<>();
@@ -358,8 +369,10 @@ public class VideoPlayerView implements EventChannel.StreamHandler {
 
     @Override
     public void onCancel(Object arguments) {
+        releasePlayer();
         this.eventSink = null;
         stopPositionUpdate();
+        Log.d("PlayerView", "EventSink Removed");
     }
 
     @OptIn(markerClass = UnstableApi.class)

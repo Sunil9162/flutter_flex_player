@@ -18,7 +18,8 @@ import 'package:flutter_flex_player/helpers/extensions.dart';
 import 'package:flutter_flex_player/helpers/flex_player_sources.dart';
 import 'package:flutter_flex_player/helpers/streams.dart';
 import 'package:flutter_flex_player/pages/player_builder.dart';
-import 'package:get/get.dart';
+import 'package:get/get_utils/get_utils.dart';
+import 'package:get/state_manager.dart';
 import 'package:http/http.dart';
 import 'package:rxdart/rxdart.dart' as dart;
 import 'package:rxdart/rxdart.dart';
@@ -33,23 +34,12 @@ export 'helpers/enums.dart';
 part './controllers/NativePlayer/native_player_view.dart';
 part './pages/full_screen_page.dart';
 
-class FlutterFlexPlayerController extends GetxController {
+class FlutterFlexPlayerController {
   final MethodChannelFlutterFlexPlayer _channel =
       MethodChannelFlutterFlexPlayer();
   StreamSubscription? eventStreamSubScription;
-  static FlutterFlexPlayerController get instance =>
-      Get.isRegistered<FlutterFlexPlayerController>()
-          ? Get.find<FlutterFlexPlayerController>()
-          : Get.put(FlutterFlexPlayerController._());
 
-  FlutterFlexPlayerController._();
-  factory FlutterFlexPlayerController() {
-    return instance;
-  }
-
-  @override
-  void onInit() {
-    super.onInit();
+  FlutterFlexPlayerController() {
     _channel.setupChannels(this);
     nativePlayer.value = RepaintBoundary(
       child: _NativePlayerView(
@@ -64,6 +54,7 @@ class FlutterFlexPlayerController extends GetxController {
       _positionstream.add(Duration.zero);
       _durationstream.add(Duration.zero);
       eventStreamSubScription?.cancel();
+      _playbackDurationstreamSubscription?.cancel();
       eventStreamSubScription =
           _channel.eventChannel.receiveBroadcastStream().listen(
         (event) {
@@ -105,6 +96,13 @@ class FlutterFlexPlayerController extends GetxController {
         final state = _mapStateFromString(data['state']);
         playerStateSink.add(state);
         isPlaying = state == PlayerState.playing;
+      }
+      if (data.containsKey("width")) {
+        final width = data['width'];
+        final height = data['height'];
+        final ratio = width / height;
+        _aspectRatiosink.add(ratio);
+        playerAspectRatio.value = double.parse(ratio.toString());
       }
       if (data.containsKey('duration') || data.containsKey("position")) {
         final duration = Duration(milliseconds: data['duration']);
@@ -192,6 +190,11 @@ class FlutterFlexPlayerController extends GetxController {
   final _positionstream = BehaviorSubject<Duration>.seeded(Duration.zero);
   StreamSink<Duration> get positionSink => _positionstream.sink;
   Stream<Duration> get onPositionChanged => _positionstream.stream;
+
+  final _aspectRatiostream = BehaviorSubject<double>.seeded(16 / 0);
+  StreamSink<double> get _aspectRatiosink => _aspectRatiostream.sink;
+  Stream<double> get aspectRatioStream => _aspectRatiostream.stream;
+  RxDouble playerAspectRatio = (16 / 9).obs;
 
   /// Stream of [Duration] emitted when the video player duration changes.
   /// The stream emits the duration of the video player.
@@ -431,20 +434,21 @@ class FlutterFlexPlayerController extends GetxController {
     }
   }
 
-  @override
-  void onClose() {
-    disposePlayer();
-    super.onClose();
-  }
+  // @override
+  // void onClose() {
+  //   disposePlayer();
+  //   super.onClose();
+  // }
 
   disposePlayer() {
     _channel.dispose();
-    _playbackDurationstreamSubscription?.cancel();
     _durationstream.close();
     _positionstream.close();
     _bufferstream.close();
     _qualityStream.close();
     _playbackSpeedStream.close();
+    eventStreamSubScription?.cancel();
+    _playbackDurationstreamSubscription?.cancel();
   }
 
   RxBool isFullScreen = false.obs;

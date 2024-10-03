@@ -5,7 +5,7 @@ class FlexPlayerConfiguration {
   final bool controlsVisible;
   final Orientation orientationonFullScreen;
   final String? thumbnail;
-  final double aspectRatio;
+  final double? aspectRatio;
   final bool autoDispose;
   final bool autoPlay;
   final bool loop;
@@ -23,7 +23,7 @@ class FlexPlayerConfiguration {
     this.controlsVisible = true,
     this.orientationonFullScreen = Orientation.landscape,
     this.thumbnail,
-    this.aspectRatio = 16 / 9,
+    this.aspectRatio,
     this.autoDispose = true,
     this.autoPlay = true,
     this.loop = false,
