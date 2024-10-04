@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -87,9 +86,6 @@ class PlayerController extends GetxController with GetTickerProviderStateMixin {
     }
     startTimer();
     _isInitDone = true;
-    ever(isControlsVisible, (callback) {
-      log("ControlVisible: ${isControlsVisible.value}");
-    });
   }
 
   void startTimer() {
