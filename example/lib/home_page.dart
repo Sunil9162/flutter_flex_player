@@ -28,9 +28,11 @@ class _HomePageState extends State<HomePage> {
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const VideoPlayerScreen()));
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const VideoPlayerScreen(),
+                  ),
+                );
               },
               child: const Text("Player Screen"),
             ),

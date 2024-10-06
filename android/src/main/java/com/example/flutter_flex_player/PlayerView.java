@@ -20,17 +20,26 @@ import com.google.gson.Gson;
 import java.util.Map;
 
 public class PlayerView implements PlatformView, MethodChannel.MethodCallHandler  {
-    private final LinearLayout layout;
+    private   LinearLayout layout;
+    private final Context context;
     private VideoPlayerView videoPlayerView = null;
 
     public PlayerView(Context context, BinaryMessenger messenger, int viewId) {
+        this.context = context;
+        MethodChannel methodChannel = new MethodChannel(messenger, "flutter_flex_player");
+        methodChannel.setMethodCallHandler(this);
+        createPlayer();
+        EventChannel eventChannel = new EventChannel(messenger, "flutter_flex_player/events");
+        eventChannel.setStreamHandler(this.videoPlayerView);
+    }
+
+    private void createPlayer(){
         TextureView textureView = new TextureView(context);
         layout = new LinearLayout(context);
         layout.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         this.videoPlayerView = VideoPlayerView.getInstance(context);
         layout.addView(textureView);
         textureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
-
             @Override
             public void onSurfaceTextureAvailable(@NonNull SurfaceTexture surface, int width, int height) {
                 videoPlayerView.setTextureView(surface);
@@ -51,17 +60,15 @@ public class PlayerView implements PlatformView, MethodChannel.MethodCallHandler
 
             }
         });
-        MethodChannel methodChannel = new MethodChannel(messenger, "flutter_flex_player");
-        methodChannel.setMethodCallHandler(this);
-        EventChannel eventChannel = new EventChannel(messenger, "flutter_flex_player/events");
-        eventChannel.setStreamHandler(this.videoPlayerView);
     }
+
 
 
 
     @Override
     public void onMethodCall(@NonNull MethodCall call, @NonNull MethodChannel.Result result) {
         switch (call.method) {
+
             case "load":
                 Map<Object, Object> arguments = (Map<Object, Object>) call.arguments;
                 loadPlayer(arguments);
@@ -112,7 +119,7 @@ public class PlayerView implements PlatformView, MethodChannel.MethodCallHandler
                 result.success("Player Reloading...");
                 break;
             case "dispose":
-                if (videoPlayerView != null) {
+                if(videoPlayerView != null){
                     videoPlayerView.releasePlayer();
                 }
                 result.success(true);

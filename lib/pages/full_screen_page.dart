@@ -30,16 +30,11 @@ class _FullScreenViewState extends State<_FullScreenView> {
   }
 
   @override
-  void dispose() {
-    widget.controller.isFullScreen.value = false;
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: true,
       onPopInvokedWithResult: (didPop, result) {
+        widget.controller.isFullScreen.value = false;
         SystemChrome.setPreferredOrientations([
           DeviceOrientation.portraitUp,
           DeviceOrientation.portraitDown,

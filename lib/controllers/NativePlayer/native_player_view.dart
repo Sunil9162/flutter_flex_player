@@ -1,9 +1,11 @@
 part of '../../flutter_flex_player_controller.dart';
 
 class _NativePlayerView extends StatefulWidget {
+  final VoidCallback onPlatformViewCreated;
   final FlutterFlexPlayerController flexPlayerController;
   const _NativePlayerView({
     required this.flexPlayerController,
+    required this.onPlatformViewCreated,
   });
 
   @override
@@ -39,6 +41,7 @@ class _NativePlayerViewState extends State<_NativePlayerView> {
         )
           ..addOnPlatformViewCreatedListener((int id) {
             params.onPlatformViewCreated(id);
+            widget.onPlatformViewCreated();
           })
           ..create();
       },

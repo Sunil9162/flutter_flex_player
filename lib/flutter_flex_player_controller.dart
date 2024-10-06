@@ -38,12 +38,16 @@ class FlutterFlexPlayerController {
   final MethodChannelFlutterFlexPlayer _channel =
       MethodChannelFlutterFlexPlayer();
   StreamSubscription? eventStreamSubScription;
+  final _completer = Completer();
 
   FlutterFlexPlayerController() {
     _channel.setupChannels(this);
     nativePlayer.value = RepaintBoundary(
       child: _NativePlayerView(
         flexPlayerController: this,
+        onPlatformViewCreated: () {
+          _completer.complete();
+        },
       ),
     );
   }
@@ -268,6 +272,7 @@ class FlutterFlexPlayerController {
     VoidCallback? onInitialized,
   }) async {
     _channel.setupChannels(this);
+    await _completer.future;
     configuration = configuration.copyWith(
       autoPlay: autoPlay,
       loop: loop,

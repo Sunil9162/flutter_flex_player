@@ -28,8 +28,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         // ),
         // PlayerSources.network(
         //     "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"),
-        // PlayerSources.youtube(videoId: "zqDLrRsTplk"),
-        widget.source!,
+
+        widget.source ?? PlayerSources.youtube(videoId: "zqDLrRsTplk"),
         autoPlay: true,
         loop: true,
       );

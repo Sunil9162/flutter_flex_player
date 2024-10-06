@@ -21,6 +21,10 @@ class MethodChannelFlutterFlexPlayer extends FlutterFlexPlayerPlatform {
     eventChannel = const EventChannel(_eventChannelName);
   }
 
+  Future<void> createPlayer() async {
+    await methodChannel.invokeMethod("createPlayer");
+  }
+
   @override
   Future<void> dispose() async {
     await methodChannel.invokeMethod("dispose");
