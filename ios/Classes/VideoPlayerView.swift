@@ -26,8 +26,8 @@ import QuartzCore
 class VideoPlayerView: NSObject, FlutterStreamHandler {
     static var instance: VideoPlayerView?
     
-    private var player: AVPlayer?
-    private var playerLayer: AVPlayerLayer?
+    public var player: AVPlayer?
+    public var playerLayer: AVPlayerLayer?
     private var playerItem: AVPlayerItem?
     private var eventSink: FlutterEventSink?
     private var handler: Timer?
@@ -40,7 +40,7 @@ class VideoPlayerView: NSObject, FlutterStreamHandler {
     private var observerContext = 0
     
     override init() {
-        super.init()
+        super.init() 
     }
     
     static func getInstance() -> VideoPlayerView {
@@ -51,23 +51,13 @@ class VideoPlayerView: NSObject, FlutterStreamHandler {
     }
     
     private func initPlayer() {
+        
         guard player == nil else { return }
         
         player = AVPlayer()
-        
-        // Add observer to track playback
-        player?.addObserver(self, forKeyPath: "rate", options: [.new, .initial], context: &observerContext)
+       
     }
-    
-    // Handle player events
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {
-        if context == &observerContext {
-            if keyPath == "rate", let newRate = change?[.newKey] as? Float {
-                let playing = newRate != 0
-                sendPlayerState(playing ? "playing" : "paused")
-            }
-        }
-    }
+   
     
     private func startPositionUpdate() {
         handler = Timer.scheduledTimer(withTimeInterval: POSITION_UPDATE_INTERVAL_MS, repeats: true, block: { [weak self] timer in
@@ -117,9 +107,8 @@ class VideoPlayerView: NSObject, FlutterStreamHandler {
     func loadPlayer(arguments: [String: Any]) {
         self.arguments = arguments
         
-        guard let videoDataList = arguments["videoData"] as? [[String: Any]] else { return }
-        videoData.removeAll()
-        
+        guard let videoDataList = arguments["videoData"] as? [[String:Any]] else { return }
+        print(videoDataList)
         for videoDataDict in videoDataList {
             if let videoDataItem = VideoData.fromJson(json: videoDataDict) {
                 videoData.append(videoDataItem)
@@ -140,8 +129,10 @@ class VideoPlayerView: NSObject, FlutterStreamHandler {
         let index = arguments["index"] as? Int ?? 0
         
         fileType = FileType(rawValue: arguments["type"] as? Int ?? 0) ?? .url
-        
-        initPlayer()
+        print(arguments["type"] as Any)
+        if player == nil {
+            initPlayer()
+        }
         
         // Player configuration
         player?.volume = mute ? 0 : Float(volume)
@@ -173,9 +164,11 @@ class VideoPlayerView: NSObject, FlutterStreamHandler {
     }
     
     func playWithUrl(videoItem: VideoData) {
+       
         guard let url = URL(string: videoItem.videoUrl) else { return }
         playerItem = AVPlayerItem(url: url)
-        player?.replaceCurrentItem(with: playerItem)
+        print("Video Url is Coming \(url)")
+        player = AVPlayer(playerItem: playerItem)
         player?.play()
     }
     
@@ -189,11 +182,39 @@ class VideoPlayerView: NSObject, FlutterStreamHandler {
     func playWithAudioAndVideo(videoUrl: String, audioUrl: String) {
         guard let videoURL = URL(string: videoUrl), let audioURL = URL(string: audioUrl) else { return }
         
-        let videoItem = AVPlayerItem(url: videoURL)
-        let audioItem = AVPlayerItem(url: audioURL)
+        let composition = AVMutableComposition()
         
-        player = AVPlayer(items: [videoItem, audioItem])
-        player?.play()
+        do {
+            // Video Asset
+            let videoAsset = AVURLAsset(url: videoURL)
+            let videoTrack = videoAsset.tracks(withMediaType: .video).first!
+            
+            // Add video track to the composition
+            let videoCompositionTrack = composition.addMutableTrack(withMediaType: .video,
+                                                                    preferredTrackID: kCMPersistentTrackID_Invalid)
+            try videoCompositionTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: videoAsset.duration),
+                                                       of: videoTrack, at: .zero)
+            
+            // Audio Asset
+            let audioAsset = AVURLAsset(url: audioURL)
+            let audioTrack = audioAsset.tracks(withMediaType: .audio).first!
+            
+            // Add audio track to the composition
+            let audioCompositionTrack = composition.addMutableTrack(withMediaType: .audio,
+                                                                    preferredTrackID: kCMPersistentTrackID_Invalid)
+            try audioCompositionTrack?.insertTimeRange(CMTimeRange(start: .zero, duration: videoAsset.duration),
+                                                       of: audioTrack, at: .zero)
+            
+            // Create a player item with the composition
+            let playerItem = AVPlayerItem(asset: composition)
+            player = AVPlayer(playerItem: playerItem)
+            
+            // Play the combined audio and video
+            player?.play()
+            
+        } catch {
+            print("Error merging audio and video: \(error)")
+        }
     }
     
     func releasePlayer() {

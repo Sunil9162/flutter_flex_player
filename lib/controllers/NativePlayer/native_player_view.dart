@@ -16,9 +16,12 @@ class _NativePlayerViewState extends State<_NativePlayerView> {
   @override
   Widget build(BuildContext context) {
     if (defaultTargetPlatform == TargetPlatform.iOS) {
-      return const UiKitView(
+      return UiKitView(
         viewType: "player",
-        creationParamsCodec: StandardMessageCodec(),
+        creationParamsCodec: const StandardMessageCodec(),
+        onPlatformViewCreated: (id) {
+          widget.onPlatformViewCreated();
+        },
       );
     }
     return PlatformViewLink(
