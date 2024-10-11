@@ -26,10 +26,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         //   // "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4",
         //   "https://moctobpltc-i.akamaihd.net/hls/live/571329/eight/playlist.m3u8",
         // ),
-        PlayerSources.network(
-            "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"),
+        // PlayerSources.network(
+        //     "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"),
 
-        // widget.source ?? PlayerSources.youtube(videoId: "zqDLrRsTplk"),
+        widget.source ?? PlayerSources.youtube(videoId: "zqDLrRsTplk"),
         autoPlay: true,
         loop: true,
       );

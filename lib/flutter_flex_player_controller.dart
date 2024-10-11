@@ -741,7 +741,9 @@ class FlutterFlexPlayerController {
                                       color: Colors.grey,
                                     ),
                               10.widthBox,
-                              Text(quality),
+                              Text(quality.toLowerCase().contains("p")
+                                  ? quality
+                                  : "${quality}p"),
                             ],
                           ),
                         ),
@@ -848,7 +850,10 @@ class FlutterFlexPlayerController {
                                           color: Colors.grey,
                                         ),
                                   10.widthBox,
-                                  Expanded(child: Text(quality)),
+                                  Expanded(
+                                      child: Text(quality.contains("p")
+                                          ? quality
+                                          : "${quality}p")),
                                 ],
                               ),
                             ),
