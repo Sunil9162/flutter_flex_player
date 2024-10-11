@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:get/get.dart';
 import 'package:http/http.dart';
@@ -67,6 +68,7 @@ class FlexYoutubeController extends GetxController {
         //     videosList.add(video);
         //   }
         // }
+        log("Videos: ${videosList.map((e) => e.toMap()).toList()}");
       }
       sortByQuality();
     } catch (e) {
