@@ -16,10 +16,10 @@ dependencies:
   get: ^4.6.6
   html: ^0.15.4
   http: ^1.2.2
-  plugin_platform_interface: ^2.1.8  
+  plugin_platform_interface: ^2.1.8
+  rxdart: null
   wakelock_plus: ^1.2.8
-  youtube_explode_dart: ^2.2.2
-  rxdart:
+  youtube_explode_dart: ^2.2.3
 
 dev_dependencies:
   flutter_lints: ^4.0.0

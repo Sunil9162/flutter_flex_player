@@ -66,36 +66,24 @@ class _FlutterFlexPlayerState extends State<FlutterFlexPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    return Flexible(
-      child: SizedBox(
-        width: MediaQuery.sizeOf(context).width,
-        child: Obx(() {
-          return AspectRatio(
-            aspectRatio: configuration.aspectRatio ??
-                widget.controller.playerAspectRatio.value,
-            child: ColoredBox(
-              color: Colors.black,
-              child: widget.controller.isFullScreen.value
-                  ? const SizedBox()
-                  : PlayerBuilder(
-                      controller: widget.controller,
-                      configuration: configuration,
-                      onFullScreeen: widget.onFullScreeen,
-                    ),
-              // child: Obx(() {
-              //   if (widget.controller.isFullScreen.value) {
-              //     return const SizedBox();
-              //   }
-              //   return PlayerBuilder(
-              //     controller: widget.controller,
-              //     configuration: configuration,
-              //     onFullScreeen: widget.onFullScreeen,
-              //   );
-              // }),
-            ),
-          );
-        }),
-      ),
+    return SizedBox(
+      width: MediaQuery.sizeOf(context).width,
+      child: Obx(() {
+        return AspectRatio(
+          aspectRatio: configuration.aspectRatio ??
+              widget.controller.playerAspectRatio.value,
+          child: ColoredBox(
+            color: Colors.black,
+            child: widget.controller.isFullScreen.value
+                ? const SizedBox()
+                : PlayerBuilder(
+                    controller: widget.controller,
+                    configuration: configuration,
+                    onFullScreeen: widget.onFullScreeen,
+                  ),
+          ),
+        );
+      }),
     );
   }
 }
